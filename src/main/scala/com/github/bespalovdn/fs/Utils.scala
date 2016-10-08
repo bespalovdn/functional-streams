@@ -18,10 +18,10 @@ trait PipeUtils extends FutureUtils
     def success(): Future[Unit] = success(())
     def fail[A](cause: String): Future[A] = Future.failed(new ActionFailedException(cause))
 
-    def fork[A, B, C](c: Consumer[A, B, C])(implicit e: ExecutionContext): Consumer[A, B, Unit] = stream => {
-        Future{
-            c(stream)
-        }
-        success()
-    }
+    def consume[A, B]()(implicit s: Stream[A, B]): Consumed[A, B, Unit] = Consumed(s, ())
+    def consume[A, B, C](value: C)(implicit s: Stream[A, B]): Consumed[A, B, C] = Consumed(s, value)
+
+//    implicit class ConsumedExt[A, B, C](c: Consumed[A, B, C]){
+//        def toFuture: Future[Consumed[A, B, C]] = success(c)
+//    }
 }

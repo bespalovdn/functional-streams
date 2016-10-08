@@ -2,7 +2,7 @@ package com.github.bespalovdn.fs.examples
 
 import java.util.Scanner
 
-import com.github.bespalovdn.fs.{PipeUtils, FutureUtils, Stream, StreamClosedException}
+import com.github.bespalovdn.fs._
 import com.github.bespalovdn.fs.Pipes._
 
 import scala.concurrent.duration.Duration
@@ -19,7 +19,7 @@ object SysIO extends PipeUtils {
     //            keepalive(stream)
     //    }
 
-    def invite: Consumer[String, String, Unit] = stream => for {
+    def invite: Consumer[String, String, Unit] = implicit stream => for {
         _ <- stream.write("INVITE")
         res <- stream.read()
         res <- res match {
@@ -30,24 +30,24 @@ object SysIO extends PipeUtils {
             case "OK" => success()
             case r => fail(s"Unexpected result: $r. Expected: OK")
         }
-    } yield ()
+    } yield consume()
 
-    def echo: Consumer[String, String, Unit] = stream => for {
+    def echo: Consumer[String, String, Unit] = implicit stream => for {
         s <- stream.read()
         _ <- s.toUpperCase match {
             case "STOP" => success()
             case a => stream.write(a) >> echo(stream)
         }
-    } yield ()
+    } yield consume()
 
-    def buy: Consumer[String, String, Unit] = stream => stream.write("BUY") >> stream.read() >>= {
-        case "OK" => success()
+    def buy: Consumer[String, String, Unit] = implicit stream => stream.write("BUY") >> stream.read() >>= {
+        case "OK" => success(consume())
         case _ => println("Invalid response. Expected: OK"); buy(stream)
     }
 
-    def log(msg: String): Consumer[String, String, Unit] = stream => {
+    def log(msg: String): Consumer[String, String, Unit] = implicit stream => {
         println(msg)
-        success()
+        success(consume())
     }
 
     def apply(): Unit ={
