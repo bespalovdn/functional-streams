@@ -1,0 +1,9 @@
+version = '0.1'
+
+apply plugin: 'scala'
+
+repositories {
+  mavenCentral()
+}
+
+
