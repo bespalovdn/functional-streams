@@ -100,13 +100,13 @@ trait StdInOutStreamImpl
             val p = Promise[Unit]
             Future{
                 println(elem)
-                p.success()
+                p.success(())
             }
             p.future
         }
 
         override def close(): Future[Unit] = {
-            closed.tryComplete(Success())
+            closed.tryComplete(Success(()))
             closed.future
         }
     }

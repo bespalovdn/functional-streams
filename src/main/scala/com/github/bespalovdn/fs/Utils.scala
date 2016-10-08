@@ -15,6 +15,7 @@ trait FutureUtils
 trait PipeUtils extends FutureUtils
 {
     def success[A](value: A): Future[A] = Future.successful(value)
+    def success(): Future[Unit] = success(())
     def fail[A](cause: String): Future[A] = Future.failed(new ActionFailedException(cause))
 
     def fork[A, B, C](c: Consumer[A, B, C])(implicit e: ExecutionContext): Consumer[A, B, Unit] = stream => {
