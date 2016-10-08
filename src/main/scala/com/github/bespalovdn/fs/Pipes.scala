@@ -16,22 +16,31 @@ object Pipes
     type Pipe[A, B, C, D] = Stream[A, B] => Stream[C, D]
     type Consumer[A, B, C] = Stream[A, B] => Future[Consumed[A, B, C]]
 
-    def fork[A, B, C]: Consumer[A, B, C] => Consumer[A, B, Unit] = ???
+    private def doFork[A, B]: Stream[A, B] => (Stream[A, B], Stream[A, B]) = stream => {
+
+    }
+
+    def fork[A, B, C]: Consumer[A, B, C] => Consumer[A, B, Unit] = c => stream => {
+        val (s1, s2) = doFork(stream)
+        c(s1)
+        Future.successful(Consumed(s2, ()))
+    }
 
     private def combination1[A, B, C, D]: Stream[A, B] => Pipe[A, B, C, D] => Stream[C, D] = s => p => p(s)
+
     private def combination2[A, B, C]: Stream[A, B] => Consumer[A, B, C] => Future[C] = s => c => {
         import scala.concurrent.ExecutionContext.Implicits.global
         val fC = c(s)
         fC.onComplete{case _ => s.close()}
         fC.map(_.value)
     }
+
     private def combination3[A, B, C, D](implicit ec: ExecutionContext):
         Consumer[A, B, C] => (C => Consumer[A, B, D]) => Consumer[A, B, D] =
         cC => cCD => stream => for{
             c <- cC(stream)
             d <- cCD(c.value)(c.stream)
         } yield d
-
 
     implicit class StreamOps[A, B](s: Stream[A, B]){
         def >> [C, D](p: Pipe[A, B, C, D]): Stream[C, D] = combination1(s)(p)
