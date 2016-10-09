@@ -50,7 +50,7 @@ object SysIO extends PipeUtils {
     }
 
     def apply(): Unit ={
-        val stream = new StdInOutStreamImpl {}.stdInOutStream
+        val stream = StdInOutStreamImpl.stdInOutStream
         val consumer = invite >>
             //            fork(keepalive) >>
             log("Echo server started. Print STOP in order to stop.") >>
@@ -67,14 +67,14 @@ object SysIO extends PipeUtils {
     }
 }
 
-trait StdInOutStreamImpl
+object StdInOutStreamImpl
 {
     private implicit def ec: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
     //ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(2))
 
     private val sin = new Scanner(System.in)
 
-    def stdInOutStream: Stream[String, String] = new Stream[String, String] with ClosableStream[String, String] {
+    val stdInOutStream: Stream[String, String] = new Stream[String, String] with ClosableStream[String, String] {
         override def read(): Future[String] = checkClosed {
             val p = Promise[String]
             Future{
