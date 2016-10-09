@@ -65,33 +65,44 @@ object Pipes
         } yield Consumed(sRight, ())
 
     private def forkStream[A, B]: Stream[A, B] => (Stream[A, B], Stream[A, B]) = stream => {
-        val q1: util.Queue[Future[A]] = new ConcurrentLinkedQueue[Future[A]]()
-        val q2: util.Queue[Future[A]] = new ConcurrentLinkedQueue[Future[A]]()
+        trait Queue{
+            def isClosed: Boolean
+            def offer(elem: Future[A]): Unit = if(!isClosed) q.offer(elem)
+            def poll(): Future[A] =  q.poll()
+
+            private val q = new ConcurrentLinkedQueue[Future[A]]()
+        }
+
+        var streams = List.empty[SubStream]
 
         def doWrite(elem: B): Future[Unit] = stream.synchronized{ stream.write(elem) }
-        def doRead(q: util.Queue[Future[A]]): Future[A] = {
+        def doRead(q: Queue): Future[A] = {
             q.poll() match {
                 case null =>
                     val f = stream.synchronized(stream.read())
-                    q1.offer(f)
-                    q2.offer(f)
+                    streams.foreach(_.readQueue.offer(f))
                     doRead(q)
                 case elem =>
                     elem
             }
         }
-        def doClose(s1: ClosableStream[A, B], s2: ClosableStream[A, B]): Unit ={
+        // Close upstream when both downstreams are closed:
+        def doClose(s1: ClosableStream[A, B], s2: ClosableStream[A, B]): Unit = {
             import scala.concurrent.ExecutionContext.Implicits.global
             s1.closed >> s2.closed >> {stream.close()}
         }
 
-        class SubStream(readQueue: util.Queue[Future[A]]) extends ClosableStream[A, B]{
+        class SubStream extends ClosableStream[A, B]{
+            streams :+= this
             override def read(): Future[A] = checkClosed{ doRead(readQueue) }
             override def write(elem: B): Future[Unit] = checkClosed{ doWrite(elem) }
+            val readQueue: Queue = new Queue {
+                override def isClosed: Boolean = closed.value.isDefined
+            }
         }
 
-        val s1 = new SubStream(q1)
-        val s2 = new SubStream(q2)
+        val s1 = new SubStream()
+        val s2 = new SubStream()
         doClose(s1, s2)
         (s1, s2)
     }
