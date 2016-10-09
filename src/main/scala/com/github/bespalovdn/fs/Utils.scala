@@ -5,9 +5,10 @@ import scala.util.Success
 
 trait FutureUtils
 {
-    implicit class FutureExt[A](val f: Future[A]){
+    implicit class FutureOps[A](val f: Future[A]){
         def >>= [B](fAB: A => Future[B])(implicit e: ExecutionContext): Future[B] = f flatMap fAB
         def >> [B](fB: => Future[B])(implicit e: ExecutionContext): Future[B] = f flatMap (_ => fB)
+        def <|> (f2: Future[A])(implicit e: ExecutionContext): Future[A] = Future.firstCompletedOf(Seq(f, f2))
     }
 }
 
@@ -39,8 +40,7 @@ trait ClosableStream[A, B] extends Stream[A, B] with FutureUtils
         if(_closed.isCompleted)
             Future.failed(new StreamClosedException)
         else {
-            val fClosed = closed >> Future.failed(new StreamClosedException)
-            Future.firstCompletedOf(Seq(f, fClosed))
+            f <|> (closed >> Future.failed(new StreamClosedException))
         }
     }
 }
