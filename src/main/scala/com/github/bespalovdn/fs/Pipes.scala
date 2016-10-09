@@ -22,14 +22,14 @@ object Pipes
     type Consumer[A, B, C] = Stream[A, B] => Future[Consumed[A, B, C]]
 
     implicit class StreamOps[A, B](s: Stream[A, B]){
-        def >> [C, D](p: Pipe[A, B, C, D]): Stream[C, D] = combination1(s)(p)
-        def >>> [C](c: => Consumer[A, B, C]): Future[C] = combination2(s)(c)
+        def <|> [C, D](p: Pipe[A, B, C, D]): Stream[C, D] = combination1(s)(p)
+        def <*> [C](c: => Consumer[A, B, C]): Future[C] = combination2(s)(c)
     }
 
     implicit class ConsumerOps[A, B, C](c: Consumer[A, B, C]){
         def >>= [D](cd: C => Consumer[A, B, D])(implicit ec: ExecutionContext): Consumer[A, B, D] = combination3(ec)(c)(cd)
         def >> [D](d: => Consumer[A, B, D])(implicit ec: ExecutionContext): Consumer[A, B, D] = combination3(ec)(c)(_ => d)
-        def >>> (p: => Pipe[A, B, A, B])(implicit ec: ExecutionContext): Consumer[A, B, Unit] = combination4(ec)(c)(p)
+        def <*> (p: => Pipe[A, B, A, B])(implicit ec: ExecutionContext): Consumer[A, B, Unit] = combination4(ec)(c)(p)
     }
 
     def fork[A, B, C]: Consumer[A, B, C] => Consumer[A, B, Unit] = c => stream => {
