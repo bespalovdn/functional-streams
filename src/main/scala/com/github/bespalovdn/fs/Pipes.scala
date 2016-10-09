@@ -4,6 +4,7 @@ import java.util
 import java.util.concurrent.ConcurrentLinkedQueue
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 trait Stream[A, B]
 {
@@ -40,7 +41,10 @@ object Pipes
     private def combination2[A, B, C]: Stream[A, B] => Consumer[A, B, C] => Future[C] = s => c => {
         import scala.concurrent.ExecutionContext.Implicits.global
         val fC = c(s)
-        fC.onComplete{case _ => s.close()}
+        fC.onComplete{
+            case Success(Consumed(s2, _)) => s2.close()
+            case Failure(_) => s.close()
+        }
         fC.map(_.value)
     }
 
