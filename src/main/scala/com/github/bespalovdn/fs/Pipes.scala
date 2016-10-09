@@ -86,7 +86,7 @@ object Pipes
                     case null =>
                         val f = stream.synchronized(stream.read())
                         downStreams.foreach(_.readQueue.offer(f))
-                        read()
+                        Option(readQueue.poll()).getOrElse(Future.failed(new StreamClosedException))
                     case elem =>
                         elem
                 }
