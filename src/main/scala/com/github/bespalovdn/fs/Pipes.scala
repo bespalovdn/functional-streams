@@ -73,15 +73,20 @@ object Pipes
                     elem
             }
         }
+        def doClose(s1: ClosableStream[A, B], s2: ClosableStream[A, B]): Unit ={
+            import FutureUtils._
+            import scala.concurrent.ExecutionContext.Implicits.global
+            s1.closed >> s2.closed >> {stream.close()}
+        }
 
-        class SubStream(readQueue: util.Queue[Future[A]]) extends Stream[A, B]{
-            override def read(): Future[A] = doRead(readQueue)
-            override def write(elem: B): Future[Unit] = doWrite(elem)
-            override def close(): Future[Unit] = ???
+        class SubStream(readQueue: util.Queue[Future[A]]) extends ClosableStream[A, B]{
+            override def read(): Future[A] = checkClosed{ doRead(readQueue) }
+            override def write(elem: B): Future[Unit] = checkClosed{ doWrite(elem) }
         }
 
         val s1 = new SubStream(q1)
         val s2 = new SubStream(q2)
+        doClose(s1, s2)
         (s1, s2)
     }
 }

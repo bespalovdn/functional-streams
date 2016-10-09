@@ -2,7 +2,8 @@ package com.github.bespalovdn.fs
 
 import com.github.bespalovdn.fs.Pipes._
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{Promise, ExecutionContext, Future}
+import scala.util.Success
 
 trait FutureUtils
 {
@@ -12,6 +13,8 @@ trait FutureUtils
     }
 }
 
+object FutureUtils extends FutureUtils
+
 trait PipeUtils extends FutureUtils
 {
     def success[A](value: A): Future[A] = Future.successful(value)
@@ -20,8 +23,26 @@ trait PipeUtils extends FutureUtils
 
     def consume[A, B]()(implicit s: Stream[A, B]): Consumed[A, B, Unit] = Consumed(s, ())
     def consume[A, B, C](value: C)(implicit s: Stream[A, B]): Consumed[A, B, C] = Consumed(s, value)
+}
 
-//    implicit class ConsumedExt[A, B, C](c: Consumed[A, B, C]){
-//        def toFuture: Future[Consumed[A, B, C]] = success(c)
-//    }
+trait ClosableStream[A, B] extends Stream[A, B] with FutureUtils
+{
+    private val _closed = Promise[Unit]
+
+    val closed: Future[Unit] = _closed.future
+
+    override def close(): Future[Unit] = {
+        _closed.tryComplete(Success(()))
+        _closed.future
+    }
+
+    protected def checkClosed[A](f: => Future[A]): Future[A] ={
+        import scala.concurrent.ExecutionContext.Implicits.global
+        if(_closed.isCompleted)
+            Future.failed(new StreamClosedException)
+        else {
+            val fClosed = closed >> Future.failed(new StreamClosedException)
+            Future.firstCompletedOf(Seq(f, fClosed))
+        }
+    }
 }

@@ -75,18 +75,7 @@ trait StdInOutStreamImpl
 
     private val sin = new Scanner(System.in)
 
-    def stdInOutStream: Stream[String, String] = new Stream[String, String] with FutureUtils {
-        private val closed = Promise[Unit]
-
-        private def checkClosed[A](f: => Future[A]): Future[A] ={
-            if(closed.isCompleted)
-                Future.failed(new StreamClosedException)
-            else {
-                val fClosed = closed.future >> Future.failed(new StreamClosedException)
-                Future.firstCompletedOf(Seq(f, fClosed))
-            }
-        }
-
+    def stdInOutStream: Stream[String, String] = new Stream[String, String] with ClosableStream[String, String] {
         override def read(): Future[String] = checkClosed {
             val p = Promise[String]
             Future{
@@ -95,7 +84,6 @@ trait StdInOutStreamImpl
             }
             p.future
         }
-
         override def write(elem: String): Future[Unit] = checkClosed {
             val p = Promise[Unit]
             Future{
@@ -103,11 +91,6 @@ trait StdInOutStreamImpl
                 p.success(())
             }
             p.future
-        }
-
-        override def close(): Future[Unit] = {
-            closed.tryComplete(Success(()))
-            closed.future
         }
     }
 }
