@@ -76,6 +76,8 @@ object Pipes
             override def close(): Future[Unit] = ???
         }
 
-        ???
+        val s1 = new SubStream(q1)
+        val s2 = new SubStream(q2)
+        (s1, s2)
     }
 }
