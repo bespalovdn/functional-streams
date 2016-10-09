@@ -1,11 +1,11 @@
 package com.github.bespalovdn.fs
 
-import java.util
 import java.util.concurrent.ConcurrentLinkedQueue
+
+import com.github.bespalovdn.fs.FutureUtils._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
-import FutureUtils._
 
 trait Stream[A, B]
 {
