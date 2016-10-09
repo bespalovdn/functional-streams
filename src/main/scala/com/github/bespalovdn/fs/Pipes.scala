@@ -23,12 +23,13 @@ object Pipes
 
     implicit class StreamOps[A, B](s: Stream[A, B]){
         def >> [C, D](p: Pipe[A, B, C, D]): Stream[C, D] = combination1(s)(p)
-        def >> [C](c: => Consumer[A, B, C]): Future[C] = combination2(s)(c)
+        def >>> [C](c: => Consumer[A, B, C]): Future[C] = combination2(s)(c)
     }
 
     implicit class ConsumerOps[A, B, C](c: Consumer[A, B, C]){
         def >>= [D](cd: C => Consumer[A, B, D])(implicit ec: ExecutionContext): Consumer[A, B, D] = combination3(ec)(c)(cd)
         def >> [D](d: => Consumer[A, B, D])(implicit ec: ExecutionContext): Consumer[A, B, D] = combination3(ec)(c)(_ => d)
+        def >>> (p: => Pipe[A, B, A, B])(implicit ec: ExecutionContext): Consumer[A, B, Unit] = combination4(ec)(c)(p)
     }
 
     def fork[A, B, C]: Consumer[A, B, C] => Consumer[A, B, Unit] = c => stream => {
@@ -56,7 +57,12 @@ object Pipes
             d <- cCD(c.value)(c.stream)
         } yield d
 
-    private def combination4[A, B, C, D, E]: Consumer[A, B, E] => Pipe[A, B, C, D] => Consumer[C, D, Unit] = ???
+    private def combination4[A, B, C](implicit ec: ExecutionContext):
+    Consumer[A, B, C] => Pipe[A, B, A, B] => Consumer[A, B, Unit] =
+        c => p => sLeft => for {
+            _ <- c(sLeft)
+            sRight <- Future.successful(p(sLeft))
+        } yield Consumed(sRight, ())
 
     private def forkStream[A, B]: Stream[A, B] => (Stream[A, B], Stream[A, B]) = stream => {
         val q1: util.Queue[Future[A]] = new ConcurrentLinkedQueue[Future[A]]()

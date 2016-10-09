@@ -56,7 +56,7 @@ object SysIO extends PipeUtils {
             log("Echo server started. Print STOP in order to stop.") >>
             echo >>
             buy
-        await(stream >> consumer)
+        await(stream >>> consumer)
         println("DONE")
     }
 
