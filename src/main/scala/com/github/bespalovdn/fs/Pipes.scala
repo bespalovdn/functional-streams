@@ -68,42 +68,40 @@ object Pipes
         trait Queue{
             def isClosed: Boolean
             def offer(elem: Future[A]): Unit = if(!isClosed) q.offer(elem)
-            def poll(): Future[A] =  q.poll()
+            def poll(): Future[A] = q.poll()
 
             private val q = new ConcurrentLinkedQueue[Future[A]]()
         }
 
         var streams = List.empty[SubStream]
 
-        def doWrite(elem: B): Future[Unit] = stream.synchronized{ stream.write(elem) }
-        def doRead(q: Queue): Future[A] = {
-            q.poll() match {
-                case null =>
-                    val f = stream.synchronized(stream.read())
-                    streams.foreach(_.readQueue.offer(f))
-                    doRead(q)
-                case elem =>
-                    elem
+        class SubStream extends ClosableStream[A, B]{
+            streams :+= this
+            val readQueue: Queue = new Queue {
+                override def isClosed: Boolean = closed.value.isDefined
+            }
+            override def write(elem: B): Future[Unit] = checkClosed{ stream.synchronized{ stream.write(elem) } }
+            override def read(): Future[A] = checkClosed{
+                readQueue.poll() match {
+                    case null =>
+                        val f = stream.synchronized(stream.read())
+                        streams.foreach(_.readQueue.offer(f))
+                        read()
+                    case elem =>
+                        elem
+                }
             }
         }
+
         // Close upstream when both downstreams are closed:
-        def doClose(s1: ClosableStream[A, B], s2: ClosableStream[A, B]): Unit = {
+        def closeStream(s1: ClosableStream[A, B], s2: ClosableStream[A, B]): Unit = {
             import scala.concurrent.ExecutionContext.Implicits.global
             s1.closed >> s2.closed >> {stream.close()}
         }
 
-        class SubStream extends ClosableStream[A, B]{
-            streams :+= this
-            override def read(): Future[A] = checkClosed{ doRead(readQueue) }
-            override def write(elem: B): Future[Unit] = checkClosed{ doWrite(elem) }
-            val readQueue: Queue = new Queue {
-                override def isClosed: Boolean = closed.value.isDefined
-            }
-        }
-
         val s1 = new SubStream()
         val s2 = new SubStream()
-        doClose(s1, s2)
+        closeStream(s1, s2)
         (s1, s2)
     }
 }
