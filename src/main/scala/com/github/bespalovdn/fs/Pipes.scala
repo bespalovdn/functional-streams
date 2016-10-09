@@ -73,10 +73,10 @@ object Pipes
             private val q = new ConcurrentLinkedQueue[Future[A]]()
         }
 
-        var streams = List.empty[SubStream]
+        var downStreams = List.empty[DownStream]
 
-        class SubStream extends ClosableStream[A, B]{
-            streams :+= this
+        class DownStream extends ClosableStream[A, B]{
+            downStreams :+= this
             val readQueue: Queue = new Queue {
                 override def isClosed: Boolean = closed.value.isDefined
             }
@@ -85,7 +85,7 @@ object Pipes
                 readQueue.poll() match {
                     case null =>
                         val f = stream.synchronized(stream.read())
-                        streams.foreach(_.readQueue.offer(f))
+                        downStreams.foreach(_.readQueue.offer(f))
                         read()
                     case elem =>
                         elem
@@ -94,14 +94,14 @@ object Pipes
         }
 
         // Close upstream when both downstreams are closed:
-        def closeStream(s1: ClosableStream[A, B], s2: ClosableStream[A, B]): Unit = {
+        def closeUpstream(s1: ClosableStream[A, B], s2: ClosableStream[A, B]): Unit = {
             import scala.concurrent.ExecutionContext.Implicits.global
             s1.closed >> s2.closed >> {stream.close()}
         }
 
-        val s1 = new SubStream()
-        val s2 = new SubStream()
-        closeStream(s1, s2)
+        val s1 = new DownStream()
+        val s2 = new DownStream()
+        closeUpstream(s1, s2)
         (s1, s2)
     }
 }
