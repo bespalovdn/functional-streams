@@ -1,8 +1,6 @@
 package com.github.bespalovdn.fs
 
-import com.github.bespalovdn.fs.Pipes._
-
-import scala.concurrent.{Promise, ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.Success
 
 trait FutureUtils

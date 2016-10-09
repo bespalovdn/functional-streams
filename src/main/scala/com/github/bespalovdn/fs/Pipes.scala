@@ -5,6 +5,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
+import FutureUtils._
 
 trait Stream[A, B]
 {
@@ -74,7 +75,6 @@ object Pipes
             }
         }
         def doClose(s1: ClosableStream[A, B], s2: ClosableStream[A, B]): Unit ={
-            import FutureUtils._
             import scala.concurrent.ExecutionContext.Implicits.global
             s1.closed >> s2.closed >> {stream.close()}
         }

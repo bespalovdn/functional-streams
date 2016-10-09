@@ -2,12 +2,11 @@ package com.github.bespalovdn.fs.examples
 
 import java.util.Scanner
 
-import com.github.bespalovdn.fs._
 import com.github.bespalovdn.fs.Pipes._
+import com.github.bespalovdn.fs._
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
-import scala.util.Success
 
 object SysIO extends PipeUtils {
     import scala.concurrent.ExecutionContext.Implicits.global
