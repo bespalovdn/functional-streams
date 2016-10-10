@@ -37,7 +37,10 @@ object Pipes
 
     def fork[A, B, C, D, X]: Consumer[A, B, C, D, X] => Consumer[A, B, A, B, Unit] = c => stream => {
         val (s1, s2) = forkStream(stream)
-        c(s1)
+        c(s1).onComplete{
+            case Success(Consumed(stream1, _)) => stream1.close()
+            case Failure(_) => s1.close()
+        }
         Future.successful(Consumed(s2, ()))
     }
 
