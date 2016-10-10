@@ -36,6 +36,7 @@ object Pipes
     }
 
     def fork[A, B, C, D, X]: Consumer[A, B, C, D, X] => Consumer[A, B, A, B, Unit] = c => stream => {
+        import scala.concurrent.ExecutionContext.Implicits.global
         val (s1, s2) = forkStream(stream)
         c(s1).onComplete{
             case Success(Consumed(stream1, _)) => stream1.close()
@@ -71,37 +72,33 @@ object Pipes
         } yield Consumed(sEF, ())
 
     private def forkStream[A, B]: Stream[A, B] => (Stream[A, B], Stream[A, B]) = stream => {
-        trait Queue{
-            def isClosed: Boolean
-            def offer(elem: Future[A]): Unit = if(!isClosed) q.offer(elem)
-            def poll(): Future[A] = q.poll()
+        import scala.concurrent.ExecutionContext.Implicits.global
 
-            private val q = new ConcurrentLinkedQueue[Future[A]]()
-        }
-
-        var downStreams = List.empty[DownStream]
+        var readQueues = List.empty[ConcurrentLinkedQueue[Future[A]]]
 
         class DownStream extends ClosableStream[A, B]{
-            downStreams :+= this
-            val readQueue: Queue = new Queue {
-                override def isClosed: Boolean = closed.value.isDefined
-            }
+            val readQueue = new ConcurrentLinkedQueue[Future[A]]()
+            readQueues :+= readQueue
             override def write(elem: B): Future[Unit] = checkClosed{ stream.synchronized{ stream.write(elem) } }
             override def read(): Future[A] = checkClosed{
                 readQueue.poll() match {
                     case null =>
                         val f = stream.synchronized(stream.read())
-                        downStreams.foreach(_.readQueue.offer(f))
+                        readQueues.foreach(_ offer f)
                         Option(readQueue.poll()).getOrElse(Future.failed(new StreamClosedException))
                     case elem =>
                         elem
                 }
             }
+            override def close(): Future[Unit] = {
+                val f = super.close()
+                f.onComplete{case _ => readQueues = readQueues.filter(_ ne this)}
+                f
+            }
         }
 
         // Close upstream when both downstreams are closed:
         def closeUpstream(s1: ClosableStream[A, B], s2: ClosableStream[A, B]): Unit = {
-            import scala.concurrent.ExecutionContext.Implicits.global
             s1.closed >> s2.closed >> {stream.close()}
         }
 
