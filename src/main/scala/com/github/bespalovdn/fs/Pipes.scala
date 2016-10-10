@@ -35,7 +35,7 @@ object Pipes
             combination4(ec)(cX)(p)
     }
 
-    def fork[A, B, X]: Consumer[A, B, A, B, X] => Consumer[A, B, A, B, Unit] = c => stream => {
+    def fork[A, B, C, D, X]: Consumer[A, B, C, D, X] => Consumer[A, B, A, B, Unit] = c => stream => {
         val (s1, s2) = forkStream(stream)
         c(s1)
         Future.successful(Consumed(s2, ()))
