@@ -8,7 +8,12 @@ import com.github.bespalovdn.fs._
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 
-object SysIO extends PipeUtils {
+trait SysIOTypes
+{
+    type Consumer[A] = Pipes.Consumer[String, String, String, String, A]
+}
+
+object SysIO extends PipeUtils with SysIOTypes {
     import scala.concurrent.ExecutionContext.Implicits.global
 
     //    def keepalive: Consumer[String, String, Unit] = stream => {
@@ -18,7 +23,7 @@ object SysIO extends PipeUtils {
     //            keepalive(stream)
     //    }
 
-    def invite: Consumer[String, String, Unit] = implicit stream => for {
+    def invite: Consumer[Unit] = implicit stream => for {
         _ <- stream.write("INVITE")
         res <- stream.read()
         res <- res match {
@@ -31,7 +36,7 @@ object SysIO extends PipeUtils {
         }
     } yield consume()
 
-    def echo: Consumer[String, String, Unit] = implicit stream => for {
+    def echo: Consumer[Unit] = implicit stream => for {
         s <- stream.read()
         _ <- s.toUpperCase match {
             case "STOP" => success()
@@ -39,12 +44,12 @@ object SysIO extends PipeUtils {
         }
     } yield consume()
 
-    def buy: Consumer[String, String, Unit] = implicit stream => stream.write("BUY") >> stream.read() >>= {
+    def buy: Consumer[Unit] = implicit stream => stream.write("BUY") >> stream.read() >>= {
         case "OK" => success(consume())
         case _ => println("Invalid response. Expected: OK"); buy(stream)
     }
 
-    def log(msg: String): Consumer[String, String, Unit] = implicit stream => {
+    def log(msg: String): Consumer[Unit] = implicit stream => {
         println(msg)
         success(consume())
     }
