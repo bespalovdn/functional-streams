@@ -19,20 +19,23 @@ case class Consumed[A, B, C](stream: Stream[A, B], value: C)
 object Pipes
 {
     type Pipe[A, B, C, D] = Stream[A, B] => Stream[C, D]
-    type Consumer[A, B, C] = Stream[A, B] => Future[Consumed[A, B, C]]
+    type Consumer[A, B, C, D, E] = Stream[A, B] => Future[Consumed[C, D, E]]
 
     implicit class StreamOps[A, B](s: Stream[A, B]){
         def <|> [C, D](p: Pipe[A, B, C, D]): Stream[C, D] = combination1(s)(p)
-        def <*> [C](c: => Consumer[A, B, C]): Future[C] = combination2(s)(c)
+        def <*> [C, D, X](c: => Consumer[A, B, C, D, X]): Future[X] = combination2(s)(c)
     }
 
-    implicit class ConsumerOps[A, B, C](c: Consumer[A, B, C]){
-        def >>= [D](cd: C => Consumer[A, B, D])(implicit ec: ExecutionContext): Consumer[A, B, D] = combination3(ec)(c)(cd)
-        def >> [D](d: => Consumer[A, B, D])(implicit ec: ExecutionContext): Consumer[A, B, D] = combination3(ec)(c)(_ => d)
-        def <*> (p: => Pipe[A, B, A, B])(implicit ec: ExecutionContext): Consumer[A, B, Unit] = combination4(ec)(c)(p)
+    implicit class ConsumerOps[A, B, C, D, X](cX: Consumer[A, B, C, D, X]){
+        def >>= [E, F, Y](cXY: X => Consumer[C, D, E, F, Y])(implicit ec: ExecutionContext): Consumer[A, B, E, F, Y] =
+            combination3(ec)(cX)(cXY)
+        def >> [E, F, Y](cY: => Consumer[C, D, E, F, Y])(implicit ec: ExecutionContext): Consumer[A, B, E, F, Y] =
+            combination3(ec)(cX)(_ => cY)
+        def <*> [E, F](p: => Pipe[C, D, E, F])(implicit ec: ExecutionContext): Consumer[A, B, E, F, Unit] =
+            combination4(ec)(cX)(p)
     }
 
-    def fork[A, B, C]: Consumer[A, B, C] => Consumer[A, B, Unit] = c => stream => {
+    def fork[A, B, X]: Consumer[A, B, A, B, X] => Consumer[A, B, A, B, Unit] = c => stream => {
         val (s1, s2) = forkStream(stream)
         c(s1)
         Future.successful(Consumed(s2, ()))
@@ -40,7 +43,7 @@ object Pipes
 
     private def combination1[A, B, C, D]: Stream[A, B] => Pipe[A, B, C, D] => Stream[C, D] = s => p => p(s)
 
-    private def combination2[A, B, C]: Stream[A, B] => Consumer[A, B, C] => Future[C] = s => c => {
+    private def combination2[A, B, C, D, E]: Stream[A, B] => Consumer[A, B, C, D, E] => Future[E] = s => c => {
         import scala.concurrent.ExecutionContext.Implicits.global
         val fC = c(s)
         fC.onComplete{
@@ -50,19 +53,19 @@ object Pipes
         fC.map(_.value)
     }
 
-    private def combination3[A, B, C, D](implicit ec: ExecutionContext):
-    Consumer[A, B, C] => (C => Consumer[A, B, D]) => Consumer[A, B, D] =
-        cC => cCD => stream => for{
-            c <- cC(stream)
-            d <- cCD(c.value)(c.stream)
-        } yield d
+    private def combination3[A, B, C, D, E, F, X, Y](implicit ec: ExecutionContext):
+    Consumer[A, B, C, D, X] => (X => Consumer[C, D, E, F, Y]) => Consumer[A, B, E, F, Y] =
+        cX => cXY => stream => for{
+            x <- cX(stream)
+            y <- cXY(x.value)(x.stream)
+        } yield y
 
-    private def combination4[A, B, C](implicit ec: ExecutionContext):
-    Consumer[A, B, C] => Pipe[A, B, A, B] => Consumer[A, B, Unit] =
-        c => p => sLeft => for {
-            _ <- c(sLeft)
-            sRight <- Future.successful(p(sLeft))
-        } yield Consumed(sRight, ())
+    private def combination4[A, B, C, D, E, F, X](implicit ec: ExecutionContext):
+    Consumer[A, B, C, D, X] => Pipe[C, D, E, F] => Consumer[A, B, E, F, Unit] =
+        c => p => sAB => for {
+            Consumed(sCD, x) <- c(sAB)
+            sEF <- Future.successful(p(sCD))
+        } yield Consumed(sEF, ())
 
     private def forkStream[A, B]: Stream[A, B] => (Stream[A, B], Stream[A, B]) = stream => {
         trait Queue{
