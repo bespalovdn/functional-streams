@@ -11,7 +11,7 @@ trait Stream[A, B]
 {
     def read(): Future[A]
     def write(elem: B): Future[Unit]
-    def close(): Future[Unit]
+    def close(cause: Throwable): Future[Unit]
 }
 
 case class Consumed[A, B, C](stream: Stream[A, B], value: C)
@@ -39,8 +39,8 @@ object Pipes
         import scala.concurrent.ExecutionContext.Implicits.global
         val (s1, s2) = forkStream(stream)
         c(s1).onComplete{
-            case Success(Consumed(stream1, _)) => stream1.close()
-            case Failure(_) => s1.close()
+            case Success(Consumed(stream1, _)) => stream1.close(null)
+            case Failure(t) => s1.close(t)
         }
         Future.successful(Consumed(s2, ()))
     }
@@ -51,8 +51,8 @@ object Pipes
         import scala.concurrent.ExecutionContext.Implicits.global
         val fC = c(s)
         fC.onComplete{
-            case Success(Consumed(s2, _)) => s2.close()
-            case Failure(_) => s.close()
+            case Success(Consumed(s2, _)) => s2.close(null)
+            case Failure(t) => s.close(t)
         }
         fC.map(_.value)
     }
@@ -90,16 +90,22 @@ object Pipes
                         elem
                 }
             }
-            override def close(): Future[Unit] = {
-                val f = super.close()
+            override def close(cause: Throwable): Future[Unit] = {
+                val f = super.close(cause)
                 f.onComplete{case _ => readQueues = readQueues.filter(_ ne this)}
                 f
             }
         }
 
-        // Close upstream when both downstreams are closed:
+        // If one of downstreams closed exceptionally, then close upstream with same error.
+        // Otherwise close upstream when both downstreams are closed.
         def closeUpstream(s1: ClosableStream[A, B], s2: ClosableStream[A, B]): Unit = {
-            s1.closed >> s2.closed >> {stream.close()}
+            def closeExceptionally(t: Throwable): Unit = {
+                if(t != null) stream.close(t)
+            }
+            s1.closed.map(closeExceptionally) >>
+            s2.closed.map(closeExceptionally) >>
+            stream.close(null)
         }
 
         val s1 = new DownStream()

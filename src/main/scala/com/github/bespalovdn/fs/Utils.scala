@@ -26,21 +26,21 @@ trait PipeUtils extends FutureUtils
 
 trait ClosableStream[A, B] extends Stream[A, B] with FutureUtils
 {
-    private val _closed = Promise[Unit]
+    private val _closed = Promise[Throwable]
 
-    val closed: Future[Unit] = _closed.future
+    val closed: Future[Throwable] = _closed.future
 
-    override def close(): Future[Unit] = {
-        _closed.tryComplete(Success(()))
-        _closed.future
+    override def close(cause: Throwable): Future[Unit] = {
+        _closed.tryComplete(Success(cause))
+        _closed.future.map(_ => ())
     }
 
     protected def checkClosed[A](f: => Future[A]): Future[A] ={
         import scala.concurrent.ExecutionContext.Implicits.global
         if(_closed.isCompleted)
-            Future.failed(new StreamClosedException)
+            Future.failed(new StreamClosedException(closed.value.get.get))
         else {
-            f <|> (closed >> Future.failed(new StreamClosedException))
+            f <|> (closed >>= (cause => Future.failed(new StreamClosedException(cause))))
         }
     }
 }
