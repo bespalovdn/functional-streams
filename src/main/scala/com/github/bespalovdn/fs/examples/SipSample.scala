@@ -1,6 +1,7 @@
 package com.github.bespalovdn.fs.examples
 
-import com.github.bespalovdn.fs.{PipeUtils, Pipes}
+import com.github.bespalovdn.fs.Pipes._
+import com.github.bespalovdn.fs.{PipeUtils, Pipes, Stream}
 
 object SipSample extends App
 {
@@ -31,13 +32,19 @@ object SipMessage
 trait SipMessageFactory
 {
     def inviteRequest(sdp: String = null): SipRequest = ???
+    def byeRequest(): SipRequest = ???
+    def okResponse(request: SipRequest): SipResponse = ???
 }
 
-trait SipClient extends SipSampleTypes with PipeUtils
+object SipClient extends SipSampleTypes with PipeUtils
 {
     import SipMessage._
 
     import scala.concurrent.ExecutionContext.Implicits.global
+
+    def sipEndpoint: Stream[SipMessage, SipMessage] = ???
+
+    def consumer[A](fn: => A): Consumer[A] = implicit stream => success(consume(fn))
 
     def invite(implicit factory: SipMessageFactory): Consumer[Unit] = implicit stream => for {
         _ <- stream.write(factory.inviteRequest())
@@ -51,9 +58,24 @@ trait SipClient extends SipSampleTypes with PipeUtils
         }
     } yield consume()
 
-    final def bye(implicit factory: SipMessageFactory): Consumer[Unit] = implicit stream => stream.read() >>= {
-        case r: SipRequest if isBye(r) => success(consume())
-        case _ => bye(factory)(stream)
+    def bye(implicit factory: SipMessageFactory): Consumer[Unit] = implicit stream =>
+        stream.write(factory.byeRequest()) >> stream.read() >>= {
+            case r: SipResponse if isOk(r) => success(consume())
+            case r => fail("bye: invalid response: " + r) //TODO: add retry logic
+        }
+
+    def waitForBye(implicit factory: SipMessageFactory): Consumer[Unit] = implicit stream => stream.read() >>= {
+        case r: SipRequest if isBye(r) => stream.write(factory.okResponse(r)) >> success(consume())
+        case _ => waitForBye(factory)(stream)
     }
 
+    def run(): Unit = {
+        implicit val factory: SipMessageFactory = ???
+        val stream = sipEndpoint
+        val result = stream <*> {
+            invite >>
+            fork(waitForBye >> consumer(stream.close())) >>
+            ???
+        }
+    }
 }
