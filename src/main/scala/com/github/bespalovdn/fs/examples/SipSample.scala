@@ -25,27 +25,35 @@ object SipMessage
 {
     def isTrying(r: SipResponse): Boolean = ???
     def isOk(r: SipResponse): Boolean = ???
+    def isBye(r: SipRequest): Boolean = ???
 }
 
 trait SipMessageFactory
 {
-    def createInvite(sdp: String = null): SipRequest = ???
+    def inviteRequest(sdp: String = null): SipRequest = ???
 }
 
 trait SipClient extends SipSampleTypes with PipeUtils
 {
     import SipMessage._
 
+    import scala.concurrent.ExecutionContext.Implicits.global
+
     def invite(implicit factory: SipMessageFactory): Consumer[Unit] = implicit stream => for {
-        _ <- stream.write(factory.createInvite())
+        _ <- stream.write(factory.inviteRequest())
         r <- stream.read() >>= {
             case r: SipResponse if isTrying(r) => stream.read()
             case r => success(r)
         }
         _ <- r match {
             case r: SipResponse if isOk(r) => success()
-            case _ => fail("Unexpected response: " + r)
+            case _ => fail("invite: Unexpected response: " + r)
         }
     } yield consume()
+
+    final def bye(implicit factory: SipMessageFactory): Consumer[Unit] = implicit stream => stream.read() >>= {
+        case r: SipRequest if isBye(r) => success(consume())
+        case _ => bye(factory)(stream)
+    }
 
 }
