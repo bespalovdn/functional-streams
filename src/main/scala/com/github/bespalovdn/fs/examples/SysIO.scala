@@ -8,6 +8,11 @@ import com.github.bespalovdn.fs._
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 
+object SysIORunner extends App
+{
+    SysIO()
+}
+
 trait SysIOTypes
 {
     type Consumer[A] = Pipes.Consumer[String, String, String, String, A]
@@ -15,13 +20,6 @@ trait SysIOTypes
 
 object SysIO extends PipeUtils with SysIOTypes {
     import scala.concurrent.ExecutionContext.Implicits.global
-
-    //    def keepalive: Consumer[String, String, Unit] = stream => {
-    //        stream.write("KEEPALIVE") >>
-    //            {stream.read() >>= {case "OK" => success()}} >>
-    ////            sleep(1 minute) >>
-    //            keepalive(stream)
-    //    }
 
     def invite: Consumer[Unit] = implicit stream => for {
         _ <- stream.write("INVITE")
@@ -57,7 +55,6 @@ object SysIO extends PipeUtils with SysIOTypes {
     def apply(): Unit ={
         val stream = StdInOutStreamImpl.stdInOutStream
         val consumer = invite >>
-            //            fork(keepalive) >>
             log("Echo server started. Print STOP in order to stop.") >>
             echo >>
             buy
