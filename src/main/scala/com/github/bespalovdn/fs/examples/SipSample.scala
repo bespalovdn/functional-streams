@@ -74,7 +74,7 @@ object SipClient extends SipSampleTypes with PipeUtils
         val stream = sipEndpoint
         val result = stream <*> {
             invite >>
-            fork(waitForBye >> consumer(stream.close())) >>
+            fork(waitForBye >> consumer(stream.close(null))) >>
             ???
         }
     }

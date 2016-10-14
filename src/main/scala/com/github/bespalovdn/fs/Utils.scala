@@ -31,6 +31,7 @@ trait ClosableStream[A, B] extends Stream[A, B] with FutureUtils
     val closed: Future[Throwable] = _closed.future
 
     override def close(cause: Throwable): Future[Unit] = {
+        import scala.concurrent.ExecutionContext.Implicits.global
         _closed.tryComplete(Success(cause))
         _closed.future.map(_ => ())
     }
