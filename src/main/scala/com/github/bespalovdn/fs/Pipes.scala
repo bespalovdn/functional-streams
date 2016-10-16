@@ -35,14 +35,15 @@ object Pipes
             combination4(ec)(cX)(p)
     }
 
-    def fork[A, B, C, D, X]: Consumer[A, B, C, D, X] => Consumer[A, B, A, B, Unit] = c => stream => {
+    def fork[A, B, C, D, X]: Consumer[A, B, C, D, X] => Consumer[A, B, A, B, Future[X]] = c => stream => {
         import scala.concurrent.ExecutionContext.Implicits.global
         val (s1, s2) = forkStream(stream)
-        c(s1).onComplete{
+        val fX = c(s1)
+        fX.onComplete{
             case Success(Consumed(stream1, _)) => stream1.close()
             case Failure(t) => s1.close(t)
         }
-        Future.successful(Consumed(s2, ()))
+        Future.successful(Consumed(s2, fX.map(_.value)))
     }
 
     private def combination1[A, B, C, D]: Stream[A, B] => Pipe[A, B, C, D] => Stream[C, D] = s => p => p(s)

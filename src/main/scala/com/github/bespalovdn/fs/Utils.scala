@@ -1,8 +1,9 @@
 package com.github.bespalovdn.fs
 
+import com.github.bespalovdn.fs.Pipes._
+
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.Success
-import com.github.bespalovdn.fs.Pipes._
 
 trait FutureUtils
 {
@@ -11,6 +12,8 @@ trait FutureUtils
         def >> [B](fB: => Future[B])(implicit e: ExecutionContext): Future[B] = f flatMap (_ => fB)
         def <|> (f2: Future[A])(implicit e: ExecutionContext): Future[A] = Future.firstCompletedOf(Seq(f, f2))
     }
+
+    def repeatOnFail[A](f: => Future[A])(implicit e: ExecutionContext): Future[A] = f.recoverWith{case _ => repeatOnFail(f)}
 }
 
 object FutureUtils extends FutureUtils
