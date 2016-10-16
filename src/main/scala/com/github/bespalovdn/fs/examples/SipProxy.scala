@@ -6,7 +6,7 @@ import com.github.bespalovdn.fs.Pipes._
 import scala.concurrent.{Future, ExecutionContext}
 
 object SipProxy extends App {
-
+    ???
 }
 
 trait SipProxyCommons
@@ -18,7 +18,12 @@ trait SipProxyCommons
     implicit def executionContext: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
 }
 
-trait SipProxy extends SipProxyCommons with PipeUtils
+trait HmpPart
+{
+    def sendInvite(sdp: String): Future[String]
+}
+
+trait SipProxyIn extends SipProxyCommons with PipeUtils
 {
     import SipMessage._
 
@@ -31,14 +36,18 @@ trait SipProxy extends SipProxyCommons with PipeUtils
         f(a)
     }
 
-    def waitForInvite(implicit factory: SipMessageFactory): Consumer[String] = implicit stream => for {
+    def handleInvite(hmp: HmpPart)(implicit factory: SipMessageFactory): Consumer[Unit] = implicit stream => for {
         r <- stream.read() >>= oneOf{case r: SipRequest if isInvite(r) => success(r)}
         _ <- stream.write(factory.tryingResponse(r))
         sdp <- success(r.content.asInstanceOf[String])
-    } yield consume(sdp)
+        hmpSdp <- hmp.sendInvite(sdp)
+        _ <- stream.write(factory.okResponse(r).setContent(hmpSdp))
+    } yield consume()
+
+    val hmp: HmpPart = ???
 
     clientEndpoint <*> {
-        waitForInvite >>
+        handleInvite(hmp) >>
         (??? : Consumer[_])
     }
 
