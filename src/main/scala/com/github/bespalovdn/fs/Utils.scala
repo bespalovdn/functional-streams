@@ -2,6 +2,7 @@ package com.github.bespalovdn.fs
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.Success
+import com.github.bespalovdn.fs.Pipes._
 
 trait FutureUtils
 {
@@ -22,6 +23,8 @@ trait PipeUtils extends FutureUtils
 
     def consume[A, B]()(implicit s: Stream[A, B]): Consumed[A, B, Unit] = Consumed(s, ())
     def consume[A, B, C](value: C)(implicit s: Stream[A, B]): Consumed[A, B, C] = Consumed(s, value)
+
+    def consumer[A, B, C](fn: => C): Consumer[A, B, A, B, C] = implicit stream => success(consume(fn))
 }
 
 trait ClosableStream[A, B] extends Stream[A, B] with FutureUtils

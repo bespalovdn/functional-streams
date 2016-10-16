@@ -49,8 +49,6 @@ object SipClient extends SipSampleTypes with PipeUtils
 
     def sipEndpoint: Stream[SipMessage, SipMessage] = ???
 
-    def consumer[A](fn: => A): Consumer[A] = implicit stream => success(consume(fn))
-
     def invite(implicit factory: SipMessageFactory): Consumer[Unit] = implicit stream => for {
         _ <- stream.write(factory.inviteRequest())
         r <- stream.read() >>= {
