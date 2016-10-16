@@ -23,15 +23,7 @@ trait HmpPart extends SipProxyCommons with PipeUtils
 {
     def sendInvite(sdp: String): Future[String]
     def sendBye(): Future[Unit]
-
-    private def waitForHmpBye: Future[Unit] = ???
-
-    def handleHmpBye(implicit factory: SipMessageFactory): Consumer[Unit] = implicit stream => for {
-        _ <- waitForHmpBye
-        _ <- stream.write(factory.byeRequest()) >> repeatOnFail{
-            stream.read() >>= {case r: SipResponse if isOk(r) => success(r)}
-        }
-    } yield consume()
+    def waitForHmpBye: Future[Unit]
 }
 
 trait SipProxyIn extends SipProxyCommons with PipeUtils
@@ -54,7 +46,7 @@ trait SipProxyIn extends SipProxyCommons with PipeUtils
         sdp <- success(r.content.asInstanceOf[String])
         hmpSdp <- hmp.sendInvite(sdp)
         _ <- stream.write(factory.okResponse(r).setContent(hmpSdp))
-        hmpBye <- fork(hmp.handleHmpBye)(stream).map(_.value)
+        hmpBye <- fork(handleHmpBye(hmp))(stream).map(_.value)
         _ <- handleBye(hmp)(factory)(stream).map(_.value) <|> hmpBye
     } yield consume()
 
@@ -62,6 +54,13 @@ trait SipProxyIn extends SipProxyCommons with PipeUtils
         r <- repeatOnFail(stream.read() >>= {case r: SipRequest if isBye(r) => success(r)})
         _ <- hmp.sendBye()
         _ <- stream.write(factory.okResponse(r))
+    } yield consume()
+
+    def handleHmpBye(hmp: HmpPart)(implicit factory: SipMessageFactory): Consumer[Unit] = implicit stream => for {
+        _ <- hmp.waitForHmpBye
+        _ <- stream.write(factory.byeRequest()) >> repeatOnFail{
+            stream.read() >>= {case r: SipResponse if isOk(r) => success(r)}
+        }
     } yield consume()
 
     clientEndpoint <*> clientHandler
