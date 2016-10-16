@@ -40,8 +40,8 @@ trait SipProxyIn extends SipProxyCommons with PipeUtils
             case r => fail("Unexpected request received: " + r)
         }
         _ <- stream.write(factory.tryingResponse(r))
-        hmp <- createHmpPart()
         sdp <- success(r.content.asInstanceOf[String])
+        hmp <- createHmpPart()
         hmpSdp <- hmp.sendInvite(sdp)
         _ <- stream.write(factory.okResponse(r).setContent(hmpSdp))
         hmpBye <- fork(handleHmpBye(hmp))(stream).map(_.value)
