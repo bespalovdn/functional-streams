@@ -17,13 +17,16 @@ trait SipSampleTypes
     type Consumer[A] = PureConsumer[SipMessage, SipMessage, A]
 }
 
-trait SipMessage
+trait SipMessage{
+    def content: AnyVal
+}
 
 trait SipRequest extends SipMessage
 trait SipResponse extends SipMessage
 
 object SipMessage
 {
+    def isInvite(r: SipRequest): Boolean = ???
     def isTrying(r: SipResponse): Boolean = ???
     def isOk(r: SipResponse): Boolean = ???
     def isBye(r: SipRequest): Boolean = ???
@@ -34,6 +37,7 @@ trait SipMessageFactory
     def inviteRequest(sdp: String = null): SipRequest = ???
     def byeRequest(): SipRequest = ???
     def okResponse(request: SipRequest): SipResponse = ???
+    def tryingResponse(request: SipRequest): SipResponse = ???
 }
 
 object SipClient extends SipSampleTypes with PipeUtils
