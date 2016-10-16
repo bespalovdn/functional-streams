@@ -32,15 +32,13 @@ trait SipProxyIn extends SipProxyCommons with PipeUtils
     implicit def factory: SipMessageFactory = ???
     def hmpEndpoint: Stream[SipMessage, SipMessage] = ???
 
-    def oneOf[A, B](pf: PartialFunction[A, Future[B]])(a: A): Future[B] = {
-        val f: PartialFunction[A, Future[B]] = pf orElse {case msg => fail("Unexpected message received: " + msg)}
-        f(a)
-    }
-
     def createHmpPart(): Future[HmpPart] = ???
 
     def clientHandler(implicit factory: SipMessageFactory): Consumer[Unit] = implicit stream => for {
-        r <- stream.read() >>= oneOf{case r: SipRequest if isInvite(r) => success(r)}
+        r <- stream.read() >>= {
+            case r: SipRequest if isInvite(r) => success(r)
+            case r => fail("Unexpected request received: " + r)
+        }
         _ <- stream.write(factory.tryingResponse(r))
         hmp <- createHmpPart()
         sdp <- success(r.content.asInstanceOf[String])
