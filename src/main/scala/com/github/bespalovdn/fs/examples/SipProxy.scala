@@ -1,8 +1,8 @@
 package com.github.bespalovdn.fs.examples
 
-import com.github.bespalovdn.fs.Pipes._
+import com.github.bespalovdn.fs
 import com.github.bespalovdn.fs.examples.SipMessage._
-import com.github.bespalovdn.fs.{PipeUtils, Pipes, Stream}
+import com.github.bespalovdn.fs.{PipeUtils, Stream, _}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -13,7 +13,7 @@ object SipProxy extends App {
 trait SipProxyCommons
 {
     // consumer that do not change the stream:
-    type PureConsumer[A, B, C] = Pipes.Consumer[A, B, A, B, C]
+    type PureConsumer[A, B, C] = fs.Consumer[A, B, A, B, C]
     type Consumer[A] = PureConsumer[SipMessage, SipMessage, A]
 
     implicit def executionContext: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
@@ -31,6 +31,8 @@ trait SipProxyIn extends SipProxyCommons with PipeUtils
     def clientEndpoint: Stream[SipMessage, SipMessage] = ???
     implicit def factory: SipMessageFactory = ???
     def hmpEndpoint: Stream[SipMessage, SipMessage] = ???
+
+    def repeatOnFail[A](f: => Future[A]): Future[A] = f.recoverWith{case _ => repeatOnFail(f)}
 
     def createHmpPart(): Future[HmpPart] = ???
 

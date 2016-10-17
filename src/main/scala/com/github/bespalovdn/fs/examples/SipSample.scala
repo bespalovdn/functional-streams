@@ -1,7 +1,7 @@
 package com.github.bespalovdn.fs.examples
 
-import com.github.bespalovdn.fs.Pipes._
-import com.github.bespalovdn.fs.{PipeUtils, Pipes, Stream}
+import com.github.bespalovdn.fs
+import com.github.bespalovdn.fs.{PipeUtils, Stream, _}
 
 object SipSample extends App
 {
@@ -11,7 +11,7 @@ object SipSample extends App
 trait SipSampleTypes
 {
     // consumer that do not change the stream:
-    type PureConsumer[A, B, C] = Pipes.Consumer[A, B, A, B, C]
+    type PureConsumer[A, B, C] = fs.Consumer[A, B, A, B, C]
 
 
     type Consumer[A] = PureConsumer[SipMessage, SipMessage, A]

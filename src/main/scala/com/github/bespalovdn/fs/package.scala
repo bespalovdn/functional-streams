@@ -1,25 +1,25 @@
-package com.github.bespalovdn.fs
+package com.github.bespalovdn
 
 import java.util.concurrent.ConcurrentLinkedQueue
 
-import com.github.bespalovdn.fs.FutureUtils._
+import com.github.bespalovdn.fs.FutureExtensions._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
-trait Stream[A, B]
-{
-    def read(): Future[A]
-    def write(elem: B): Future[Unit]
-    def close(cause: Throwable = null): Future[Unit]
-}
-
-case class Consumed[A, B, C](stream: Stream[A, B], value: C)
-
-object Pipes
+package object fs
 {
     type Pipe[A, B, C, D] = Stream[A, B] => Stream[C, D]
     type Consumer[A, B, C, D, E] = Stream[A, B] => Future[Consumed[C, D, E]]
+
+    trait Stream[A, B]
+    {
+        def read(): Future[A]
+        def write(elem: B): Future[Unit]
+        def close(cause: Throwable = null): Future[Unit]
+    }
+
+    case class Consumed[A, B, C](stream: Stream[A, B], value: C)
 
     implicit class StreamOps[A, B](s: Stream[A, B]){
         def <|> [C, D](p: Pipe[A, B, C, D]): Stream[C, D] = combination1(s)(p)
@@ -105,8 +105,8 @@ object Pipes
                 if(t != null) stream.close(t)
             }
             s1.closed.map(closeExceptionally) >>
-            s2.closed.map(closeExceptionally) >>
-            stream.close()
+                s2.closed.map(closeExceptionally) >>
+                stream.close()
         }
 
         val s1 = new DownStream()

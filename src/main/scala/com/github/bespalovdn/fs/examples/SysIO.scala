@@ -2,7 +2,7 @@ package com.github.bespalovdn.fs.examples
 
 import java.util.Scanner
 
-import com.github.bespalovdn.fs.Pipes._
+import com.github.bespalovdn.fs
 import com.github.bespalovdn.fs._
 
 import scala.concurrent.duration.Duration
@@ -15,7 +15,7 @@ object SysIORunner extends App
 
 trait SysIOTypes
 {
-    type Consumer[A] = Pipes.Consumer[String, String, String, String, A]
+    type Consumer[A] = fs.Consumer[String, String, String, String, A]
 }
 
 object SysIO extends PipeUtils with SysIOTypes {
