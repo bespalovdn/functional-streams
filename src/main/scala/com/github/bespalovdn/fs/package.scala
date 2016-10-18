@@ -2,7 +2,6 @@ package com.github.bespalovdn
 
 import java.util.concurrent.ConcurrentLinkedQueue
 
-import com.github.bespalovdn.fs.FutureExtensions._
 import com.github.bespalovdn.fs.impl.ClosableStream
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -60,12 +59,7 @@ package object fs
 
     private def combination2[A, B, C, D, E]: Stream[A, B] => Consumer[A, B, C, D, E] => Future[E] = s => c => {
         import scala.concurrent.ExecutionContext.Implicits.global
-        val fC = c(s)
-        fC.onComplete{
-            case Success(Consumed(s2, _)) => s2.close()
-            case Failure(t) => s.close(t)
-        }
-        fC.map(_.value)
+        c(s).map(_.value)
     }
 
     private def combination3[A, B, C, D, E, F, X, Y](implicit ec: ExecutionContext):
@@ -108,20 +102,8 @@ package object fs
             }
         }
 
-        // If one of downstreams closed exceptionally, then close upstream with same error.
-        // Otherwise close upstream when both downstreams are closed.
-        def closeUpstream(s1: ClosableStream[A, B], s2: ClosableStream[A, B]): Unit = {
-            def closeExceptionally(t: Throwable): Unit = {
-                if(t != null) stream.close(t)
-            }
-            s1.closed.map(closeExceptionally) >>
-                s2.closed.map(closeExceptionally) >>
-                stream.close()
-        }
-
         val s1 = new DownStream()
         val s2 = new DownStream()
-        closeUpstream(s1, s2)
         (s1, s2)
     }
 }
