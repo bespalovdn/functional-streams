@@ -1,19 +1,9 @@
-package com.github.bespalovdn.fs
+package com.github.bespalovdn.fs.impl
+
+import com.github.bespalovdn.fs.{FutureExtensions, Stream, StreamClosedException}
 
 import scala.concurrent.{Future, Promise}
 import scala.util.Success
-
-trait PipeUtils extends FutureExtensions
-{
-    def success[A](value: A): Future[A] = Future.successful(value)
-    def success(): Future[Unit] = success(())
-    def fail[A](cause: String): Future[A] = Future.failed(new ActionFailedException(cause))
-
-    def consume[A, B]()(implicit s: Stream[A, B]): Consumed[A, B, Unit] = Consumed(s, ())
-    def consume[A, B, C](value: C)(implicit s: Stream[A, B]): Consumed[A, B, C] = Consumed(s, value)
-
-    def consumer[A, B, C](fn: => C): Consumer[A, B, A, B, C] = implicit stream => success(consume(fn))
-}
 
 trait ClosableStream[A, B] extends Stream[A, B] with FutureExtensions
 {

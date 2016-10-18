@@ -3,7 +3,9 @@ package com.github.bespalovdn.fs.examples
 import java.util.Scanner
 
 import com.github.bespalovdn.fs
+import com.github.bespalovdn.fs.FutureExtensions._
 import com.github.bespalovdn.fs._
+import com.github.bespalovdn.fs.impl.ClosableStream
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
@@ -18,7 +20,7 @@ trait SysIOTypes
     type Consumer[A] = fs.Consumer[String, String, String, String, A]
 }
 
-object SysIO extends PipeUtils with SysIOTypes {
+object SysIO extends SysIOTypes {
     import scala.concurrent.ExecutionContext.Implicits.global
 
     def invite: Consumer[Unit] = implicit stream => for {

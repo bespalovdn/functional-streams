@@ -3,6 +3,7 @@ package com.github.bespalovdn
 import java.util.concurrent.ConcurrentLinkedQueue
 
 import com.github.bespalovdn.fs.FutureExtensions._
+import com.github.bespalovdn.fs.impl.ClosableStream
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
@@ -45,6 +46,15 @@ package object fs
         }
         Future.successful(Consumed(s2, fX.map(_.value)))
     }
+
+    def success[A](value: A): Future[A] = Future.successful(value)
+    def success(): Future[Unit] = success(())
+    def fail[A](cause: String): Future[A] = Future.failed(new ActionFailedException(cause))
+
+    def consume[A, B]()(implicit s: Stream[A, B]): Consumed[A, B, Unit] = Consumed(s, ())
+    def consume[A, B, C](value: C)(implicit s: Stream[A, B]): Consumed[A, B, C] = Consumed(s, value)
+
+    def consumer[A, B, C](fn: => C): Consumer[A, B, A, B, C] = implicit stream => success(consume(fn))
 
     private def combination1[A, B, C, D]: Stream[A, B] => Pipe[A, B, C, D] => Stream[C, D] = s => p => p(s)
 

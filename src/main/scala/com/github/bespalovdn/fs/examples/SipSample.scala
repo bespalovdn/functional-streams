@@ -1,7 +1,8 @@
 package com.github.bespalovdn.fs.examples
 
 import com.github.bespalovdn.fs
-import com.github.bespalovdn.fs.{PipeUtils, Stream, _}
+import com.github.bespalovdn.fs.FutureExtensions._
+import com.github.bespalovdn.fs.{Stream, _}
 
 object SipSample extends App
 {
@@ -41,7 +42,7 @@ trait SipMessageFactory
     def tryingResponse(request: SipRequest): SipResponse = ???
 }
 
-object SipClient extends SipSampleTypes with PipeUtils
+object SipClient extends SipSampleTypes
 {
     import SipMessage._
 

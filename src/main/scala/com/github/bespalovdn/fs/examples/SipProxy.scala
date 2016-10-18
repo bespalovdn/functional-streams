@@ -1,8 +1,9 @@
 package com.github.bespalovdn.fs.examples
 
 import com.github.bespalovdn.fs
+import com.github.bespalovdn.fs.FutureExtensions._
 import com.github.bespalovdn.fs.examples.SipMessage._
-import com.github.bespalovdn.fs.{PipeUtils, Stream, _}
+import com.github.bespalovdn.fs.{Stream, _}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -19,14 +20,14 @@ trait SipProxyCommons
     implicit def executionContext: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
 }
 
-trait HmpPart extends SipProxyCommons with PipeUtils
+trait HmpPart extends SipProxyCommons
 {
     def sendInvite(sdp: String): Future[String]
     def sendBye(): Future[Unit]
     def waitForHmpBye: Future[Unit]
 }
 
-trait SipProxyIn extends SipProxyCommons with PipeUtils
+trait SipProxyIn extends SipProxyCommons
 {
     def clientEndpoint: Stream[SipMessage, SipMessage] = ???
     implicit def factory: SipMessageFactory = ???
