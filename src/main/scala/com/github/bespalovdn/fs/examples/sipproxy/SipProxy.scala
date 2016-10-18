@@ -1,8 +1,9 @@
-package com.github.bespalovdn.fs.examples
+package com.github.bespalovdn.fs.examples.sipproxy
 
 import com.github.bespalovdn.fs
 import com.github.bespalovdn.fs.FutureExtensions._
 import com.github.bespalovdn.fs.examples.SipMessage._
+import com.github.bespalovdn.fs.examples.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
 import com.github.bespalovdn.fs.{Stream, _}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -11,7 +12,7 @@ object SipProxy extends App {
     ???
 }
 
-trait SipProxyCommons
+trait SipCommons
 {
     // consumer that do not change the stream:
     type PureConsumer[A, B, C] = fs.Consumer[A, B, A, B, C]
@@ -20,14 +21,7 @@ trait SipProxyCommons
     implicit def executionContext: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
 }
 
-trait HmpPart extends SipProxyCommons
-{
-    def sendInvite(sdp: String): Future[String]
-    def sendBye(): Future[Unit]
-    def waitForHmpBye: Future[Unit]
-}
-
-trait SipProxyIn extends SipProxyCommons
+trait ClientPartImpl extends SipCommons
 {
     def clientEndpoint: Stream[SipMessage, SipMessage] = ???
     implicit def factory: SipMessageFactory = ???

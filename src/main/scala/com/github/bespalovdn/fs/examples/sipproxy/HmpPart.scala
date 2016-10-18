@@ -1,0 +1,39 @@
+package com.github.bespalovdn.fs.examples.sipproxy
+
+import com.github.bespalovdn.fs.FutureExtensions._
+import com.github.bespalovdn.fs.examples.SipMessage._
+import com.github.bespalovdn.fs.examples.{SipMessage, SipMessageFactory, SipResponse}
+import com.github.bespalovdn.fs.{Stream, _}
+
+import scala.concurrent.{Future, Promise}
+
+
+trait HmpPart
+{
+    def sendInvite(sdp: String): Future[String]
+    def sendBye(): Future[Unit]
+    def waitForHmpBye: Future[Unit]
+}
+
+class HmpPartImpl(endpoint: Stream[SipMessage, SipMessage])(implicit factory: SipMessageFactory) extends HmpPart with SipCommons
+{
+    private val byeReceived = Promise[Unit]
+
+    override def sendInvite(sdp: String): Future[String] = endpoint <*> invite(sdp)
+
+    override def waitForHmpBye: Future[Unit] = byeReceived.future
+
+    override def sendBye(): Future[Unit] = ???
+
+    def invite(sdp: String)(implicit factory: SipMessageFactory): Consumer[String] = implicit stream => for {
+        _ <- stream.write(factory.inviteRequest(sdp))
+        r <- stream.read() >>= {
+            case r: SipResponse if isTrying(r) => stream.read()
+            case r => success(r)
+        }
+        r <- r match {
+            case r: SipResponse if isOk(r) => success(r)
+            case _ => fail("invite: Unexpected response: " + r)
+        }
+    } yield consume(r.content.asInstanceOf[String])
+}
