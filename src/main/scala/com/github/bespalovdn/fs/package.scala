@@ -2,10 +2,9 @@ package com.github.bespalovdn
 
 import java.util.concurrent.ConcurrentLinkedQueue
 
-import com.github.bespalovdn.fs.impl.ClosableStream
+import com.github.bespalovdn.fs.impl.{ClosableStream, ClosableStreamImpl}
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
 
 package object fs
 {
@@ -16,7 +15,6 @@ package object fs
     {
         def read(): Future[A]
         def write(elem: B): Future[Unit]
-        def close(cause: Throwable = null): Future[Unit]
     }
 
     case class Consumed[A, B, C](stream: Stream[A, B], value: C)
@@ -40,8 +38,7 @@ package object fs
         val (s1, s2) = forkStream(stream)
         val fX = c(s1)
         fX.onComplete{
-            case Success(Consumed(stream1, _)) => stream1.close()
-            case Failure(t) => s1.close(t)
+            case _ => s1.close()
         }
         Future.successful(Consumed(s2, fX.map(_.value)))
     }
@@ -76,14 +73,17 @@ package object fs
             sEF <- Future.successful(p(sCD))
         } yield Consumed(sEF, ())
 
-    private def forkStream[A, B]: Stream[A, B] => (Stream[A, B], Stream[A, B]) = stream => {
+    private def forkStream[A, B]: Stream[A, B] => (ClosableStream[A, B], ClosableStream[A, B]) = stream => {
         import scala.concurrent.ExecutionContext.Implicits.global
 
         var readQueues = List.empty[ConcurrentLinkedQueue[Future[A]]]
 
-        class DownStream extends ClosableStream[A, B]{
+        class DownStream extends ClosableStreamImpl[A, B]{
             val readQueue = new ConcurrentLinkedQueue[Future[A]]()
+
             readQueues :+= readQueue
+            closed.onComplete{case _ => readQueues = readQueues.filter(_ ne readQueue)}
+
             override def write(elem: B): Future[Unit] = checkClosed{ stream.synchronized{ stream.write(elem) } }
             override def read(): Future[A] = checkClosed{
                 readQueue.poll() match {
@@ -94,11 +94,6 @@ package object fs
                     case elem =>
                         elem
                 }
-            }
-            override def close(cause: Throwable): Future[Unit] = {
-                val f = super.close(cause)
-                f.onComplete{case _ => readQueues = readQueues.filter(_ ne this)}
-                f
             }
         }
 

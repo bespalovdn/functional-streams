@@ -80,7 +80,7 @@ object SipClient extends SipSampleTypes
         val stream = sipEndpoint
         val result = stream <*> {
             invite >>
-            fork(waitForBye >> consumer(stream.close(new ByeReceivedException))) >>
+            fork(waitForBye >> consumer(??? : Unit /*to stop processing*/)) >>
             ???
         }
     }

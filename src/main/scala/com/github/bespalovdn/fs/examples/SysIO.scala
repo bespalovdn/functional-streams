@@ -5,7 +5,7 @@ import java.util.Scanner
 import com.github.bespalovdn.fs
 import com.github.bespalovdn.fs.FutureExtensions._
 import com.github.bespalovdn.fs._
-import com.github.bespalovdn.fs.impl.ClosableStream
+import com.github.bespalovdn.fs.impl.ClosableStreamImpl
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
@@ -78,7 +78,7 @@ object StdInOutStreamImpl
 
     private val sin = new Scanner(System.in)
 
-    val stdInOutStream: Stream[String, String] = new Stream[String, String] with ClosableStream[String, String] {
+    val stdInOutStream: Stream[String, String] = new ClosableStreamImpl[String, String] {
         override def read(): Future[String] = checkClosed {
             val p = Promise[String]
             Future{
