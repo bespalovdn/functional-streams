@@ -19,6 +19,8 @@ trait SipCommons
     type Consumer[A] = PureConsumer[SipMessage, SipMessage, A]
 
     implicit def executionContext: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
+
+    def repeatOnFail[A](f: => Future[A]): Future[A] = f.recoverWith{case _ => repeatOnFail(f)}
 }
 
 trait ClientPartImpl extends SipCommons
@@ -26,8 +28,6 @@ trait ClientPartImpl extends SipCommons
     def clientEndpoint: Stream[SipMessage, SipMessage] = ???
     implicit def factory: SipMessageFactory = ???
     def hmpEndpoint: Stream[SipMessage, SipMessage] = ???
-
-    def repeatOnFail[A](f: => Future[A]): Future[A] = f.recoverWith{case _ => repeatOnFail(f)}
 
     def createHmpPart(): Future[HmpPart] = ???
 
