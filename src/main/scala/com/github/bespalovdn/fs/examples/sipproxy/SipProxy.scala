@@ -46,7 +46,7 @@ trait ClientPartImpl extends SipCommons
         hmp <- createHmpPart()
         hmpSdp <- hmp.sendInvite(sdp)
         _ <- stream.write(factory.okResponse(r).setContent(hmpSdp))
-        hmpBye <- fork(handleHmpBye(hmp))(stream).map(_.value)
+        hmpBye <- spawn(stream <=> handleBye(hmp))
         _ <- handleBye(hmp)(factory)(stream).map(_.value) <|> hmpBye
     } yield consume()
 
