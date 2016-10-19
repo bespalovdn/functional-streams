@@ -17,13 +17,14 @@ trait HmpPart
 }
 
 class HmpPartImpl(client: ClientPart)(endpoint: Stream[SipMessage, SipMessage])
-                 (implicit factory: SipMessageFactory) extends HmpPart with SipCommons
+                 (implicit factory: SipMessageFactory)
+    extends HmpPart with SipCommons
 {
     private val byeReceived = Promise[Unit]
 
     override def sendInvite(sdp: String): Future[String] = for {
         hmpSdp <- endpoint <=> invite(sdp)
-        _ <- spawn(endpoint <=> {handleBye >> consumer(byeReceived.complete(Success(())))})
+        _ <- spawn(endpoint <=> {handleBye >> consumer(byeReceived.tryComplete(Success(())))})
     } yield hmpSdp
 
     override def waitForHmpBye: Future[Unit] = byeReceived.future
