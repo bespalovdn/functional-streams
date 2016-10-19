@@ -2,7 +2,7 @@ package com.github.bespalovdn
 
 import java.util.concurrent.ConcurrentLinkedQueue
 
-import com.github.bespalovdn.fs.impl.{ClosableStream, ClosableStreamImpl}
+import com.github.bespalovdn.fs.impl.ClosableStreamImpl
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -31,6 +31,7 @@ package object fs
         private var readQueues = List.empty[ConcurrentLinkedQueue[Future[A]]]
 
         private class DownStream(upstream: Stream[A, B]) extends ClosableStreamImpl[A, B]{
+            import scala.concurrent.ExecutionContext.Implicits.global
             val readQueue = new ConcurrentLinkedQueue[Future[A]]()
 
             readQueues :+= this.readQueue
@@ -62,13 +63,8 @@ package object fs
     }
 
     def fork[A, B, C, D, X]: Consumer[A, B, C, D, X] => Consumer[A, B, A, B, Future[X]] = c => stream => {
-        import scala.concurrent.ExecutionContext.Implicits.global
-        val (s1, s2) = forkStream(stream)
-        val fX = c(s1)
-        fX.onComplete{
-            case _ => s1.close()
-        }
-        Future.successful(Consumed(s2, fX.map(_.value)))
+        val fX = stream <=> c
+        Future.successful(Consumed(stream, fX))
     }
 
     def success[A](value: A): Future[A] = Future.successful(value)
@@ -93,33 +89,4 @@ package object fs
             Consumed(sCD, x) <- c(sAB)
             sEF <- Future.successful(p(sCD))
         } yield Consumed(sEF, ())
-
-    private def forkStream[A, B]: Stream[A, B] => (ClosableStream[A, B], ClosableStream[A, B]) = stream => {
-        import scala.concurrent.ExecutionContext.Implicits.global
-
-        var readQueues = List.empty[ConcurrentLinkedQueue[Future[A]]]
-
-        class DownStream extends ClosableStreamImpl[A, B]{
-            val readQueue = new ConcurrentLinkedQueue[Future[A]]()
-
-            readQueues :+= readQueue
-            closed.onComplete{case _ => readQueues = readQueues.filter(_ ne readQueue)}
-
-            override def write(elem: B): Future[Unit] = checkClosed{ stream.synchronized{ stream.write(elem) } }
-            override def read(): Future[A] = checkClosed{
-                readQueue.poll() match {
-                    case null =>
-                        val f = stream.synchronized(stream.read())
-                        readQueues.foreach(_ offer f)
-                        Option(readQueue.poll()).getOrElse(this.read())
-                    case elem =>
-                        elem
-                }
-            }
-        }
-
-        val s1 = new DownStream()
-        val s2 = new DownStream()
-        (s1, s2)
-    }
 }
