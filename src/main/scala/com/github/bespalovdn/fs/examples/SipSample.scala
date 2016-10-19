@@ -78,7 +78,7 @@ object SipClient extends SipSampleTypes
     def run(): Unit = {
         implicit val factory: SipMessageFactory = ???
         val stream = sipEndpoint
-        val result = stream <*> {
+        val result = stream <=> {
             invite >>
             fork(waitForBye >> consumer(??? : Unit /*to stop processing*/)) >>
             ???

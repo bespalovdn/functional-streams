@@ -63,5 +63,5 @@ trait ClientPartImpl extends SipCommons
         }
     } yield consume()
 
-    clientEndpoint <*> clientHandler
+    clientEndpoint <=> clientHandler
 }

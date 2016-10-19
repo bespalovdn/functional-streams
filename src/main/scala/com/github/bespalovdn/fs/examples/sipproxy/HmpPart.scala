@@ -23,8 +23,8 @@ class HmpPartImpl(client: ClientPart)(endpoint: Stream[SipMessage, SipMessage])
 
     //TODO: after `fork` the stream (source, endpoint) for the next consumers should be the DOWNSTREAM after fork.
     override def sendInvite(sdp: String): Future[String] = for {
-        hmpSdp <- endpoint <*> invite(sdp)
-        _ <- spawn(endpoint <*> {handleBye >> consumer(byeReceived.complete(Success(())))})
+        hmpSdp <- endpoint <=> invite(sdp)
+        _ <- spawn(endpoint <=> {handleBye >> consumer(byeReceived.complete(Success(())))})
     } yield hmpSdp
 
     override def waitForHmpBye: Future[Unit] = byeReceived.future

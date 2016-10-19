@@ -19,9 +19,34 @@ package object fs
         def <|> [C, D](p: Pipe[A, B, C, D]): Stream[C, D] = {
             p(this)
         }
-        def <*> [C, D, X](c: => Consumer[A, B, C, D, X]): Future[X] = {
+
+        def <=> [C, D, X](c: => Consumer[A, B, C, D, X]): Future[X] = {
             import scala.concurrent.ExecutionContext.Implicits.global
-            c(this).map(_.value)
+            val downStream = new DownStream(this)
+            val f = c(downStream)
+            f.onComplete{case _ => downStream.close()}
+            f.map(_.value)
+        }
+
+        private var readQueues = List.empty[ConcurrentLinkedQueue[Future[A]]]
+
+        private class DownStream(upstream: Stream[A, B]) extends ClosableStreamImpl[A, B]{
+            val readQueue = new ConcurrentLinkedQueue[Future[A]]()
+
+            readQueues :+= this.readQueue
+            this.closed.onComplete{case _ => readQueues = readQueues.filter(_ ne this.readQueue)}
+
+            override def write(elem: B): Future[Unit] = checkClosed{ upstream.synchronized{ upstream.write(elem) } }
+            override def read(): Future[A] = checkClosed{
+                this.readQueue.poll() match {
+                    case null =>
+                        val f = upstream.synchronized(upstream.read())
+                        readQueues.foreach(_ offer f)
+                        Option(this.readQueue.poll()).getOrElse(this.read())
+                    case elem =>
+                        elem
+                }
+            }
         }
     }
 
