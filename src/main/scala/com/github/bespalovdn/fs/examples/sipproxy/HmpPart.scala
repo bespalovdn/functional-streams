@@ -16,23 +16,16 @@ trait HmpPart
     def waitForHmpBye: Future[Unit]
 }
 
-trait ClientPart
-{
-    def sendBye(): Future[Unit]
-}
-
 class HmpPartImpl(client: ClientPart)(endpoint: Stream[SipMessage, SipMessage])
                  (implicit factory: SipMessageFactory) extends HmpPart with SipCommons
 {
     private val byeReceived = Promise[Unit]
 
-    override def sendInvite(sdp: String): Future[String] = endpoint <*> {
-        invite(sdp) >>= {
-            case result =>
-                fork(handleBye >> consumer(byeReceived.complete(Success(()))))
-                consumer(result)
-        }
-    }
+    //TODO: after `fork` the stream (source, endpoint) for the next consumers should be the DOWNSTREAM after fork.
+    override def sendInvite(sdp: String): Future[String] = for {
+        hmpSdp <- endpoint <*> invite(sdp)
+        _ <- spawn(endpoint <*> {handleBye >> consumer(byeReceived.complete(Success(())))})
+    } yield hmpSdp
 
     override def waitForHmpBye: Future[Unit] = byeReceived.future
 

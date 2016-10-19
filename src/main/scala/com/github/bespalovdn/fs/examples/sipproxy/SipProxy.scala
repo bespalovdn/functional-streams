@@ -23,6 +23,11 @@ trait SipCommons
     def repeatOnFail[A](f: => Future[A]): Future[A] = f.recoverWith{case _ => repeatOnFail(f)}
 }
 
+trait ClientPart
+{
+    def sendBye(): Future[Unit]
+}
+
 trait ClientPartImpl extends SipCommons
 {
     def clientEndpoint: Stream[SipMessage, SipMessage] = ???

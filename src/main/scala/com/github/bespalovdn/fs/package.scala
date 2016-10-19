@@ -15,14 +15,17 @@ package object fs
     {
         def read(): Future[A]
         def write(elem: B): Future[Unit]
+
+        def <|> [C, D](p: Pipe[A, B, C, D]): Stream[C, D] = {
+            p(this)
+        }
+        def <*> [C, D, X](c: => Consumer[A, B, C, D, X]): Future[X] = {
+            import scala.concurrent.ExecutionContext.Implicits.global
+            c(this).map(_.value)
+        }
     }
 
     case class Consumed[A, B, C](stream: Stream[A, B], value: C)
-
-    implicit class StreamOps[A, B](s: Stream[A, B]){
-        def <|> [C, D](p: Pipe[A, B, C, D]): Stream[C, D] = combination1(s)(p)
-        def <*> [C, D, X](c: => Consumer[A, B, C, D, X]): Future[X] = combination2(s)(c)
-    }
 
     implicit class ConsumerOps[A, B, C, D, X](cX: Consumer[A, B, C, D, X]){
         def >>= [E, F, Y](cXY: X => Consumer[C, D, E, F, Y])(implicit ec: ExecutionContext): Consumer[A, B, E, F, Y] =
@@ -51,13 +54,6 @@ package object fs
     def consume[A, B, C](value: C)(implicit s: Stream[A, B]): Consumed[A, B, C] = Consumed(s, value)
 
     def consumer[A, B, C](fn: => C): Consumer[A, B, A, B, C] = implicit stream => success(consume(fn))
-
-    private def combination1[A, B, C, D]: Stream[A, B] => Pipe[A, B, C, D] => Stream[C, D] = s => p => p(s)
-
-    private def combination2[A, B, C, D, E]: Stream[A, B] => Consumer[A, B, C, D, E] => Future[E] = s => c => {
-        import scala.concurrent.ExecutionContext.Implicits.global
-        c(s).map(_.value)
-    }
 
     private def combination3[A, B, C, D, E, F, X, Y](implicit ec: ExecutionContext):
     Consumer[A, B, C, D, X] => (X => Consumer[C, D, E, F, Y]) => Consumer[A, B, E, F, Y] =
