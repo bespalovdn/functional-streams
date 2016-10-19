@@ -58,7 +58,7 @@ package object fs
             combination3(ec)(cX)(cXY)
         def >> [E, F, Y](cY: => Consumer[C, D, E, F, Y])(implicit ec: ExecutionContext): Consumer[A, B, E, F, Y] =
             combination3(ec)(cX)(_ => cY)
-        def <*> [E, F](p: => Pipe[C, D, E, F])(implicit ec: ExecutionContext): Consumer[A, B, E, F, Unit] =
+        def <=> [E, F](p: => Pipe[C, D, E, F])(implicit ec: ExecutionContext): Consumer[A, B, E, F, Unit] =
             combination4(ec)(cX)(p)
     }
 
