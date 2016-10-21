@@ -24,8 +24,8 @@ class HmpPartImpl(client: ClientPart)(endpoint: Stream[SipMessage, SipMessage])
 
     override def sendInvite(sdp: String): Future[String] = for {
         hmpSdp <- endpoint <=> invite(sdp)
-        _ <- spawn(endpoint <=> {handleBye >> consumer(byeReceived.tryComplete(Success(())))})
-        _ <- spawn(endpoint <=> keepalive)
+        _ <- fork(endpoint <=> {handleBye >> consumer(byeReceived.tryComplete(Success(())))})
+        _ <- fork(endpoint <=> keepalive)
     } yield hmpSdp
 
     override def waitForHmpBye: Future[Unit] = byeReceived.future
@@ -54,7 +54,7 @@ class HmpPartImpl(client: ClientPart)(endpoint: Stream[SipMessage, SipMessage])
 
     def handleBye(implicit factory: SipMessageFactory): Consumer[Unit] = implicit stream => for {
         r <- repeatOnFail(stream.read() >>= {case r: SipRequest if isBye(r) => success(r)})
-        _ <- spawn(client.sendBye())
+        _ <- fork(client.sendBye())
         _ <- stream.write(factory.okResponse(r))
     } yield consume()
 

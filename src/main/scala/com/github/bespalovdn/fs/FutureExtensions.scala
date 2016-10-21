@@ -13,5 +13,5 @@ trait FutureExtensions
 
 object FutureExtensions extends FutureExtensions
 {
-    def spawn[A](f: => Future[A]): Future[Future[A]] = Future.successful(f)
+    def fork[A](f: => Future[A]): Future[Future[A]] = Future.successful(f)
 }
