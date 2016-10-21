@@ -38,6 +38,7 @@ trait SipMessageFactory
 {
     def inviteRequest(sdp: String = null): SipRequest = ???
     def byeRequest(): SipRequest = ???
+    def ackRequest(response: SipResponse): SipRequest = ???
     def okResponse(request: SipRequest): SipResponse = ???
     def tryingResponse(request: SipRequest): SipResponse = ???
 }
