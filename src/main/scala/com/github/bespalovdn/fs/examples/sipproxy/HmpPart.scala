@@ -64,26 +64,27 @@ class HmpPartImpl(client: ClientPart)(endpoint: Stream[SipMessage, SipMessage])
         ???
     }
 
+    class CSeqChangedException extends Exception
+
     def clientCSeqFilter: Pipe[SipMessage, SipMessage, SipResponse, SipRequest] = upstream => {
-        val lastCSeq = new AtomicReference[Option[Long]]()
         new Stream[SipResponse, SipRequest] {
+            val lastCSeq = new AtomicReference[Option[Long]]()
             override def write(elem: SipRequest): Future[Unit] = {
                 lastCSeq.set(Some(elem.cseq))
                 upstream.write(elem)
             }
             override def read(): Future[SipResponse] = {
                 val promise = Promise[SipResponse]
-                //TODO: decide when to stop repeating, in case when consumer abandons the future provided:
-                ???
-                repeatOnFail {
+                val currCSeq = lastCSeq.get()
+                val f = repeatOnFail {
+                    if(lastCSeq.get() != currCSeq)
+                        throw new CSeqChangedException()
                     upstream.read() >>= {
                         case r: SipResponse if lastCSeq.get().isEmpty => success(r)
                         case r: SipResponse if r.cseq == lastCSeq.get().get => success(r)
                     }
-                } >>= { case r =>
-                    promise.complete(Success(r))
-                    success()
                 }
+                f.onComplete(promise.complete)
                 promise.future
             }
         }
