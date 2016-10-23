@@ -7,6 +7,7 @@ import com.github.bespalovdn.fs.examples.SipMessage._
 import com.github.bespalovdn.fs.examples.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
 import com.github.bespalovdn.fs.{Stream, _}
 
+import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}
 import scala.util.Success
 
@@ -73,13 +74,13 @@ class HmpPartImpl(client: ClientPart)(endpoint: Stream[SipMessage, SipMessage])
                 lastCSeq.set(Some(elem.cseq))
                 upstream.write(elem)
             }
-            override def read(): Future[SipResponse] = {
+            override def read(timeout: Duration): Future[SipResponse] = {
                 val promise = Promise[SipResponse]
                 val currCSeq = lastCSeq.get()
                 val f = repeatOnFail {
                     if(lastCSeq.get() != currCSeq)
                         throw new CSeqChangedException()
-                    upstream.read() >>= {
+                    upstream.read(timeout) >>= {
                         case r: SipResponse if lastCSeq.get().isEmpty => success(r)
                         case r: SipResponse if r.cseq == lastCSeq.get().get => success(r)
                     }

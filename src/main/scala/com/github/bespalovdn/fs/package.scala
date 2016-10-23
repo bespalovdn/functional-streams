@@ -4,6 +4,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 
 import com.github.bespalovdn.fs.impl.ClosableStreamImpl
 
+import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
 
 package object fs
@@ -13,7 +14,7 @@ package object fs
 
     trait Stream[A, B]
     {
-        def read(): Future[A]
+        def read(timeout: Duration = null): Future[A]
         def write(elem: B): Future[Unit]
 
         def <|> [C, D](p: Pipe[A, B, C, D]): Stream[C, D] = {
@@ -38,10 +39,10 @@ package object fs
             this.closed.onComplete{case _ => readQueues = readQueues.filter(_ ne this.readQueue)}
 
             override def write(elem: B): Future[Unit] = checkClosed{ upstream.synchronized{ upstream.write(elem) } }
-            override def read(): Future[A] = checkClosed{
+            override def read(timeout: Duration): Future[A] = checkClosed{
                 this.readQueue.poll() match {
                     case null =>
-                        val f = upstream.synchronized(upstream.read())
+                        val f = upstream.synchronized(upstream.read(timeout))
                         readQueues.foreach(_ offer f)
                         Option(this.readQueue.poll()).getOrElse(this.read())
                     case elem =>
