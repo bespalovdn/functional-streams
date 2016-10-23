@@ -14,13 +14,12 @@ object SipProxy extends App {
 
 trait SipCommons
 {
-    // consumer that do not change the stream:
-    type PureConsumer[A, B, C] = fs.Consumer[A, B, A, B, C]
-    type Consumer[A] = PureConsumer[SipMessage, SipMessage, A]
+    type ConstConsumer[A, B, C] = fs.Consumer[A, B, A, B, C]
+    type Consumer[A] = ConstConsumer[SipMessage, SipMessage, A]
 
     implicit def executionContext: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
 
-    def repeatOnFail[A](f: => Future[A]): Future[A] = f.recoverWith{case _ => repeatOnFail(f)}
+    def repeatOnFail[A](f: => Future[A]): Future[A] = f.recoverWith{case e: MatchError => repeatOnFail(f)}
 }
 
 trait ClientPart

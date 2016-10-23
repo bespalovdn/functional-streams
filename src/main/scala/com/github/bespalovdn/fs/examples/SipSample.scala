@@ -21,6 +21,8 @@ trait SipSampleTypes
 trait SipMessage{
     def content: Any
     def setContent(a: Any): this.type
+
+    def cseq: Long
 }
 
 trait SipRequest extends SipMessage
