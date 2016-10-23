@@ -62,10 +62,10 @@ package object fs
             combination4(ec)(cX)(p)
     }
 
-    def fork[A, B, C, D, X]: Consumer[A, B, C, D, X] => Consumer[A, B, A, B, Future[X]] = c => stream => {
-        val fX = stream <=> c
-        Future.successful(Consumed(stream, fX))
-    }
+//    def fork[A, B, C, D, X]: Consumer[A, B, C, D, X] => Consumer[A, B, A, B, Future[X]] = c => stream => {
+//        val fX = stream <=> c
+//        Future.successful(Consumed(stream, fX))
+//    }
 
     def success[A](value: A): Future[A] = Future.successful(value)
     def success(): Future[Unit] = success(())
