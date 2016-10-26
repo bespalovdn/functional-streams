@@ -39,7 +39,9 @@ object SipMessageFactory
             new SipRequestImpl(msg, sip)
         }
 
-        override def keepaliveRequest(): SipRequest = ???
+        override def keepaliveRequest(): SipRequest = {
+            ???
+        }
 
         override def inviteRequest(sdp: String): SipRequest = {
             val hmpHost = sip.targetConnectAddr.getHostString
@@ -126,7 +128,10 @@ object SipMessageFactory
             new SipResponseImpl(msg, sip)
         }
 
-        override def tryingResponse(request: SipRequest): SipResponse = ???
+        override def tryingResponse(request: SipRequest): SipResponse = {
+            val msg = request.message.createResponse(Response.TRYING)
+            new SipResponseImpl(msg, sip)
+        }
     }
 }
 
