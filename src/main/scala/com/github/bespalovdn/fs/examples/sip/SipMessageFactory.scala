@@ -29,7 +29,10 @@ object SipMessageFactory
     private class SipResponseImpl(val message: SIPResponse, val sip: SipAccessPoint) extends SipResponse
 
     def create(sip: SipAccessPoint): SipMessageFactory = new SipMessageFactory {
-        override def ackRequest(response: SipResponse): SipRequest = ???
+        override def ackRequest(response: SipResponse): SipRequest = {
+            val msg = sip.dialog.createAck(response.cseq).asInstanceOf[SIPRequest]
+            new SipRequestImpl(msg, sip)
+        }
 
         override def byeRequest(): SipRequest = {
             val msg = sip.dialog.createRequest(Request.BYE).asInstanceOf[SIPRequest]
