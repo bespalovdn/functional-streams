@@ -15,9 +15,10 @@ object SipMessageFactory
 {
     def create(): SipMessageFactory = new SipMessageFactory {
         override def ackRequest(response: SipResponse): SipRequest = ???
-        override def inviteRequest(sdp: String): SipRequest = ???
         override def byeRequest(): SipRequest = ???
         override def keepaliveRequest(): SipRequest = ???
+        override def inviteRequest(sdp: String): SipRequest = ???
+
         override def okResponse(request: SipRequest): SipResponse = ???
         override def tryingResponse(request: SipRequest): SipResponse = ???
     }
