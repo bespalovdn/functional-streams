@@ -1,7 +1,8 @@
 package com.github.bespalovdn.fs.examples
 
-import com.github.bespalovdn.fs
 import com.github.bespalovdn.fs.FutureExtensions._
+import com.github.bespalovdn.fs.examples.sip.SipMessage._
+import com.github.bespalovdn.fs.examples.sip.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
 import com.github.bespalovdn.fs.{Stream, _}
 
 object SipSample extends App
@@ -11,45 +12,11 @@ object SipSample extends App
 
 trait SipSampleTypes
 {
-    // consumer that do not change the stream:
-    type PureConsumer[A, B, C] = fs.Consumer[A, B, A, B, C]
-
-
-    type Consumer[A] = PureConsumer[SipMessage, SipMessage, A]
-}
-
-trait SipMessage{
-    def content: Any
-    def setContent(a: Any): this.type
-
-    def cseq: Long
-}
-
-trait SipRequest extends SipMessage
-trait SipResponse extends SipMessage
-
-object SipMessage
-{
-    def isInvite(r: SipRequest): Boolean = ???
-    def isTrying(r: SipResponse): Boolean = ???
-    def isOk(r: SipResponse): Boolean = ???
-    def isBye(r: SipRequest): Boolean = ???
-}
-
-trait SipMessageFactory
-{
-    def ackRequest(response: SipResponse): SipRequest = ???
-    def byeRequest(): SipRequest = ???
-    def keepaliveRequest(): SipRequest = ???
-    def inviteRequest(sdp: String = null): SipRequest = ???
-
-    def okResponse(request: SipRequest): SipResponse = ???
-    def tryingResponse(request: SipRequest): SipResponse = ???
+    type Consumer[A] = ConstConsumer[SipMessage, SipMessage, A]
 }
 
 object SipClient extends SipSampleTypes
 {
-    import SipMessage._
 
     import scala.concurrent.ExecutionContext.Implicits.global
 

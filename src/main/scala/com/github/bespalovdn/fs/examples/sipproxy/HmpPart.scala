@@ -3,8 +3,8 @@ package com.github.bespalovdn.fs.examples.sipproxy
 import java.util.concurrent.atomic.AtomicReference
 
 import com.github.bespalovdn.fs.FutureExtensions._
-import com.github.bespalovdn.fs.examples.SipMessage._
-import com.github.bespalovdn.fs.examples.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
+import com.github.bespalovdn.fs.examples.sip.SipMessage._
+import com.github.bespalovdn.fs.examples.sip.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
 import com.github.bespalovdn.fs.{Stream, _}
 
 import scala.concurrent.duration._

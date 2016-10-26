@@ -11,6 +11,7 @@ package object fs
 {
     type Pipe[A, B, C, D] = Stream[A, B] => Stream[C, D]
     type Consumer[A, B, C, D, E] = Stream[A, B] => Future[Consumed[C, D, E]]
+    type ConstConsumer[A, B, C] = Consumer[A, B, A, B, C]
 
     trait Stream[A, B]
     {

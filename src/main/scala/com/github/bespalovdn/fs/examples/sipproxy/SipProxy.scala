@@ -1,9 +1,8 @@
 package com.github.bespalovdn.fs.examples.sipproxy
 
-import com.github.bespalovdn.fs
 import com.github.bespalovdn.fs.FutureExtensions._
-import com.github.bespalovdn.fs.examples.SipMessage._
-import com.github.bespalovdn.fs.examples.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
+import com.github.bespalovdn.fs.examples.sip.SipMessage._
+import com.github.bespalovdn.fs.examples.sip.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
 import com.github.bespalovdn.fs.{Stream, _}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -14,7 +13,6 @@ object SipProxy extends App {
 
 trait SipCommons
 {
-    type ConstConsumer[A, B, C] = fs.Consumer[A, B, A, B, C]
     type Consumer[A] = ConstConsumer[SipMessage, SipMessage, A]
 
     implicit def executionContext: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
