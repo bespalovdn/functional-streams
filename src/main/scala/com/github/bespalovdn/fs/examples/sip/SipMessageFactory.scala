@@ -4,7 +4,7 @@ import java.util
 import java.util.UUID
 import javax.sip.address.{Address, SipURI}
 import javax.sip.header._
-import javax.sip.message.Request
+import javax.sip.message.{Response, Request}
 
 import com.github.bespalovdn.fs.examples.sip.internal.SipAccessPoint
 import gov.nist.javax.sip.SIPConstants
@@ -26,12 +26,15 @@ trait SipMessageFactory
 object SipMessageFactory
 {
     private class SipRequestImpl(val message: SIPRequest, val sip: SipAccessPoint) extends SipRequest
-    private class SipResponseImpl(val message: SIPResponse, val sip: SipAccessPoint) extends SipRequest
+    private class SipResponseImpl(val message: SIPResponse, val sip: SipAccessPoint) extends SipResponse
 
     def create(sip: SipAccessPoint): SipMessageFactory = new SipMessageFactory {
         override def ackRequest(response: SipResponse): SipRequest = ???
+
         override def byeRequest(): SipRequest = ???
+
         override def keepaliveRequest(): SipRequest = ???
+
         override def inviteRequest(sdp: String): SipRequest = {
             val hmpHost = sip.targetConnectAddr.getHostString
             val hmpPort = sip.targetConnectAddr.getPort
@@ -112,7 +115,11 @@ object SipMessageFactory
             new SipRequestImpl(request, sip)
         }
 
-        override def okResponse(request: SipRequest): SipResponse = ???
+        override def okResponse(request: SipRequest): SipResponse = {
+            val msg = request.asInstanceOf[SIPRequest].createResponse(Response.OK)
+            new SipResponseImpl(msg, sip)
+        }
+
         override def tryingResponse(request: SipRequest): SipResponse = ???
     }
 }
