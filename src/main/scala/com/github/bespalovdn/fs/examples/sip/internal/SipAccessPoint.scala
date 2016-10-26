@@ -12,6 +12,7 @@ import gov.nist.javax.sip.message.SIPRequest
 trait SipAccessPoint
 {
     def localBindAddr: InetSocketAddress
+    def targetConnectAddr: InetSocketAddress
 
     def withAddressFactory[A](fn: AddressFactory => A): A
     def withHeaderFactory[A](fn: HeaderFactoryImpl => A): A
