@@ -7,7 +7,7 @@ import com.github.bespalovdn.fs.examples.SipMessage._
 import com.github.bespalovdn.fs.examples.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
 import com.github.bespalovdn.fs.{Stream, _}
 
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import scala.util.Success
 
@@ -28,7 +28,7 @@ class HmpPartImpl(client: ClientPart)(endpoint: Stream[SipMessage, SipMessage])
     override def sendInvite(sdp: String): Future[String] = for {
         hmpSdp <- endpoint <=> invite(sdp)
         _ <- fork(endpoint <=> {handleBye >> consumer(byeReceived.tryComplete(Success(())))})
-        _ <- fork(endpoint <=> keepalive)
+        _ <- fork(endpoint <|> clientCSeqFilter <=> keepalive)
     } yield hmpSdp
 
     override def waitForHmpBye: Future[Unit] = byeReceived.future
@@ -61,9 +61,15 @@ class HmpPartImpl(client: ClientPart)(endpoint: Stream[SipMessage, SipMessage])
         _ <- stream.write(factory.okResponse(r))
     } yield consume()
 
-    def keepalive(implicit factory: SipMessageFactory): Consumer[Unit] = implicit stream => {
-        ???
-    }
+    def keepalive(implicit factory: SipMessageFactory): ConstConsumer[SipResponse, SipRequest, Unit] = implicit stream => for {
+        _ <- waitFor(1.minute)
+        _ <- stream.write(factory.keepaliveRequest())
+        _ <- stream.read(10.seconds) >>= {
+            case r: SipResponse if isOk(r) => success()
+            case r => fail("keepalive: Unexpected response: " + r)
+        }
+        _ <- keepalive(factory)(stream)
+    } yield consume()
 
     class CSeqChangedException extends Exception
 
