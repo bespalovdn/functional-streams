@@ -18,11 +18,13 @@ trait SipAccessPoint
     def withHeaderFactory[A](fn: HeaderFactoryImpl => A): A
     def withMessageFactory[A](fn: MessageFactory => A): A
 
-    def newClientTransaction(request: Request): ClientTransaction
-    def newServerTransaction(request: Request): ServerTransaction
-
-    def newClientDialog(firstRequest: SIPRequest): Dialog
-    def newServerDialog(firstRequest: SIPRequest): Dialog
+//    def newClientTransaction(request: Request): ClientTransaction
+//    def newServerTransaction(request: Request): ServerTransaction
+//
+//    def newClientDialog(firstRequest: SIPRequest): Dialog
+//    def newServerDialog(firstRequest: SIPRequest): Dialog
 
     def newCallId(): CallIdHeader
+
+    def dialog: Dialog
 }

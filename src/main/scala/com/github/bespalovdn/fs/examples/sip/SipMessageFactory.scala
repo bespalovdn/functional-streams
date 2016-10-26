@@ -31,7 +31,10 @@ object SipMessageFactory
     def create(sip: SipAccessPoint): SipMessageFactory = new SipMessageFactory {
         override def ackRequest(response: SipResponse): SipRequest = ???
 
-        override def byeRequest(): SipRequest = ???
+        override def byeRequest(): SipRequest = {
+            val msg = sip.dialog.createRequest(Request.BYE).asInstanceOf[SIPRequest]
+            new SipRequestImpl(msg, sip)
+        }
 
         override def keepaliveRequest(): SipRequest = ???
 
