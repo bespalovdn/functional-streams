@@ -7,6 +7,7 @@ import javax.sip.header._
 import javax.sip.message.{Response, Request}
 
 import com.github.bespalovdn.fs.examples.sip.internal.SipAccessPoint
+import com.ringcentral.rcv.hsc.hmp.HmpSipHeader
 import gov.nist.javax.sip.SIPConstants
 import gov.nist.javax.sip.message.{SIPRequest, SIPResponse}
 
@@ -40,7 +41,13 @@ object SipMessageFactory
         }
 
         override def keepaliveRequest(): SipRequest = {
-            ???
+            val msg = sip.dialog.createRequest(Request.UPDATE).asInstanceOf[SIPRequest]
+            val sessionExpiresHeader = sip.withHeaderFactory(_.createSessionExpiresHeader(SipConstants.SESSION_EXPIRES))
+            sessionExpiresHeader.setRefresher("uac")
+            msg.setHeader(sessionExpiresHeader)
+            val minSEHeader = sip.withHeaderFactory(_.createMinSEHeader(SipConstants.MIN_SE))
+            msg.setHeader(minSEHeader)
+            new SipRequestImpl(msg, sip)
         }
 
         override def inviteRequest(sdp: String): SipRequest = {
