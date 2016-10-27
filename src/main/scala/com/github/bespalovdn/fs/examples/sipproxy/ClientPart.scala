@@ -12,11 +12,11 @@ trait ClientPart
     def sendBye(): Future[Unit]
 }
 
-trait ClientPartImpl extends SipCommons
+class ClientPartImpl(endpoint: Stream[SipMessage, SipMessage])
+    (implicit factory: SipMessageFactory)
+    extends ClientPart with SipCommons
 {
-    def clientEndpoint: Stream[SipMessage, SipMessage] = ???
-    implicit def factory: SipMessageFactory = ???
-    def hmpEndpoint: Stream[SipMessage, SipMessage] = ???
+    override def sendBye(): Future[Unit] = ???
 
     def createHmpPart(): Future[HmpPart] = ???
 
@@ -46,5 +46,7 @@ trait ClientPartImpl extends SipCommons
         }
     } yield consume()
 
-    clientEndpoint <=> clientHandler
+    def run(): Unit ={
+        endpoint <=> clientHandler
+    }
 }
