@@ -42,7 +42,7 @@ class HmpPartImpl(client: ClientPart)(endpoint: Stream[SipMessage, SipMessage])
         } yield consume ()
     }
 
-    def invite(sdp: String)(implicit factory: SipMessageFactory): Consumer[String] = implicit stream => for {
+    def invite(sdp: String)(implicit factory: SipMessageFactory): SipConsumer[String] = implicit stream => for {
         _ <- stream.write(factory.inviteRequest(sdp))
         r <- stream.read() >>= {
             case r: SipResponse if isTrying(r) => stream.read()
@@ -55,13 +55,13 @@ class HmpPartImpl(client: ClientPart)(endpoint: Stream[SipMessage, SipMessage])
         _ <- stream.write(factory.ackRequest(r))
     } yield consume(r.content.asInstanceOf[String])
 
-    def handleBye(implicit factory: SipMessageFactory): Consumer[Unit] = implicit stream => for {
+    def handleBye(implicit factory: SipMessageFactory): SipConsumer[Unit] = implicit stream => for {
         r <- repeatOnFail(stream.read() >>= {case r: SipRequest if isBye(r) => success(r)})
         _ <- fork(client.sendBye())
         _ <- stream.write(factory.okResponse(r))
     } yield consume()
 
-    def keepalive(implicit factory: SipMessageFactory): ConstConsumer[SipResponse, SipRequest, Unit] = implicit stream => for {
+    def keepalive(implicit factory: SipMessageFactory): ClientSipConsumer[Unit] = implicit stream => for {
         _ <- waitFor(1.minute)
         _ <- stream.write(factory.keepaliveRequest())
         _ <- stream.read(10.seconds) >>= {
