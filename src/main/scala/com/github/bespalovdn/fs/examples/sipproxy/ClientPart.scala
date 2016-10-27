@@ -16,7 +16,16 @@ class ClientPartImpl(endpoint: Stream[SipMessage, SipMessage])
     (implicit factory: SipMessageFactory)
     extends ClientPart with SipCommons
 {
-    override def sendBye(): Future[Unit] = ???
+    override def sendBye(): Future[Unit] = {
+        val consumer: ConstConsumer[SipResponse, SipRequest, Unit] = implicit stream => for {
+            _ <- stream.write(factory.byeRequest())
+            _ <- stream.read() >>= {
+                case r: SipResponse if isOk(r) => success(consume())
+                case r => fail("hmp bye: invalid response received: " + r)
+            }
+        } yield consume()
+        endpoint <|> clientCSeqFilter <=> consumer
+    }
 
     def createHmpPart(): Future[HmpPart] = ???
 

@@ -4,10 +4,9 @@ import java.util
 import java.util.UUID
 import javax.sip.address.{Address, SipURI}
 import javax.sip.header._
-import javax.sip.message.{Response, Request}
+import javax.sip.message.{Request, Response}
 
 import com.github.bespalovdn.fs.examples.sip.internal.SipAccessPoint
-import com.ringcentral.rcv.hsc.hmp.HmpSipHeader
 import gov.nist.javax.sip.SIPConstants
 import gov.nist.javax.sip.message.{SIPRequest, SIPResponse}
 
