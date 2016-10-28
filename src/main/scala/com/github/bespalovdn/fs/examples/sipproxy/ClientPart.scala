@@ -47,7 +47,7 @@ class ClientPartImpl(endpoint: Stream[SipMessage, SipMessage], hmpPartFactory: H
         hmp <- hmpPartFactory.createHmpPart()
         hmpSdp <- hmp.sendInvite(sdp)
         _ <- stream.write(factory.okResponse(r).setContent(hmpSdp, "application" -> "sdp"))
-        _ <- (stream <=> handleBye(hmp)) <|> (stream <=> handleHmpBye(hmp))
+        _ <- (stream <=> handleBye(hmp)) <|> (stream <*> clientCSeqFilter <=> handleHmpBye(hmp))
     } yield consume()
 
     def handleBye(hmp: HmpPart)(implicit factory: SipMessageFactory): SipConsumer[Unit] = implicit stream => for {
@@ -56,7 +56,7 @@ class ClientPartImpl(endpoint: Stream[SipMessage, SipMessage], hmpPartFactory: H
         _ <- stream.write(factory.okResponse(r))
     } yield consume()
 
-    def handleHmpBye(hmp: HmpPart)(implicit factory: SipMessageFactory): SipConsumer[Unit] = implicit stream => for {
+    def handleHmpBye(hmp: HmpPart)(implicit factory: SipMessageFactory): ClientSipConsumer[Unit] = implicit stream => for {
         _ <- hmp.waitForHmpBye
         _ <- stream.write(factory.byeRequest()) >> repeatOnFail{
             stream.read() >>= {case r: SipResponse if isOk(r) => success(r)}
