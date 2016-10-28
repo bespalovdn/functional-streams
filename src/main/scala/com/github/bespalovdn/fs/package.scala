@@ -18,7 +18,7 @@ package object fs
         def read(timeout: Duration = null): Future[A]
         def write(elem: B): Future[Unit]
 
-        def <|> [C, D](p: Pipe[A, B, C, D]): Stream[C, D] = {
+        def <*> [C, D](p: Pipe[A, B, C, D]): Stream[C, D] = {
             p(this)
         }
 

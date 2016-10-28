@@ -34,7 +34,7 @@ class ClientPartImpl(endpoint: Stream[SipMessage, SipMessage], hmpPartFactory: H
                 case r => fail("hmp bye: invalid response received: " + r)
             }
         } yield consume()
-        endpoint <|> clientCSeqFilter <=> consumer
+        endpoint <*> clientCSeqFilter <=> consumer
     }
 
     def clientHandler(implicit factory: SipMessageFactory): SipConsumer[Unit] = implicit stream => for {

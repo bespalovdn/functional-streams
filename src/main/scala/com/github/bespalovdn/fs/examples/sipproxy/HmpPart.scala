@@ -33,7 +33,7 @@ class HmpPartImpl(client: ClientPart)(endpoint: Stream[SipMessage, SipMessage])
     override def sendInvite(sdp: String): Future[String] = for {
         hmpSdp <- endpoint <=> invite(sdp)
         _ <- fork(endpoint <=> {handleBye >> consumer(byeReceived.tryComplete(Success(())))})
-        _ <- fork(endpoint <|> clientCSeqFilter <=> keepalive)
+        _ <- fork(endpoint <*> clientCSeqFilter <=> keepalive)
     } yield hmpSdp
 
     override def waitForHmpBye: Future[Unit] = byeReceived.future
