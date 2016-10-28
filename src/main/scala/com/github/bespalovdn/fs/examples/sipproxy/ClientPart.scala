@@ -9,13 +9,23 @@ import scala.concurrent.Future
 
 trait ClientPart
 {
+    def run(): Future[Unit]
     def sendBye(): Future[Unit]
 }
 
-class ClientPartImpl(endpoint: Stream[SipMessage, SipMessage])
+trait ClientPartFactory
+{
+    def createClientPart(): Future[ClientPart]
+}
+
+class ClientPartImpl(endpoint: Stream[SipMessage, SipMessage], hmpPartFactory: HmpPartFactory)
     (implicit factory: SipMessageFactory)
     extends ClientPart with SipCommons
 {
+    def run(): Future[Unit] ={
+        endpoint <=> clientHandler
+    }
+
     override def sendBye(): Future[Unit] = {
         val consumer: ClientSipConsumer[Unit] = implicit stream => for {
             _ <- stream.write(factory.byeRequest())
@@ -27,8 +37,6 @@ class ClientPartImpl(endpoint: Stream[SipMessage, SipMessage])
         endpoint <|> clientCSeqFilter <=> consumer
     }
 
-    def createHmpPart(): Future[HmpPart] = ???
-
     def clientHandler(implicit factory: SipMessageFactory): SipConsumer[Unit] = implicit stream => for {
         r <- stream.read() >>= {
             case r: SipRequest if isInvite(r) => success(r)
@@ -36,7 +44,7 @@ class ClientPartImpl(endpoint: Stream[SipMessage, SipMessage])
         }
         _ <- stream.write(factory.tryingResponse(r))
         sdp <- success(r.content.asInstanceOf[String])
-        hmp <- createHmpPart()
+        hmp <- hmpPartFactory.createHmpPart()
         hmpSdp <- hmp.sendInvite(sdp)
         _ <- stream.write(factory.okResponse(r).setContent(hmpSdp, "application" -> "sdp"))
         _ <- (stream <=> handleBye(hmp)) <|> (stream <=> handleHmpBye(hmp))
@@ -54,8 +62,4 @@ class ClientPartImpl(endpoint: Stream[SipMessage, SipMessage])
             stream.read() >>= {case r: SipResponse if isOk(r) => success(r)}
         }
     } yield consume()
-
-    def run(): Unit ={
-        endpoint <=> clientHandler
-    }
 }

@@ -19,6 +19,11 @@ trait HmpPart
     def waitForHmpBye: Future[Unit]
 }
 
+trait HmpPartFactory
+{
+    def createHmpPart(): Future[HmpPart]
+}
+
 class HmpPartImpl(client: ClientPart)(endpoint: Stream[SipMessage, SipMessage])
                  (implicit factory: SipMessageFactory)
     extends HmpPart with SipCommons
