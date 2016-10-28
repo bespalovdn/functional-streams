@@ -8,7 +8,7 @@ import javax.sip.message.MessageFactory
 
 import com.github.bespalovdn.fs.Stream
 import gov.nist.javax.sip.header.HeaderFactoryImpl
-import gov.nist.javax.sip.message.SIPRequest
+import gov.nist.javax.sip.message.{SIPResponse, SIPRequest}
 
 import scala.concurrent.Future
 import scala.concurrent.duration.Duration
@@ -21,7 +21,10 @@ class SipEndpoint(val bindAddr: InetSocketAddress)
     override def read(timeout: Duration): Future[SipMessage] = ???
 
     override def write(elem: SipMessage): Future[Unit] = {
-        elem.
+        elem.message match {
+            case r: SIPRequest => r.getTransaction.asInstanceOf[ClientTransaction].sendRequest()
+            case r: SIPResponse => ???
+        }
     }
 
     override def processRequest(event: RequestEvent): Unit = {
