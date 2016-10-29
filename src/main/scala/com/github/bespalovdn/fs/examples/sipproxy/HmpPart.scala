@@ -37,7 +37,7 @@ class HmpPartImpl(client: ClientPart)(endpoint: Stream[SipMessage, SipMessage])
                 consumer(done.tryComplete(Success(())))
         })
         _ <- {
-            def canContinue = done.future.isCompleted
+            def canContinue = !done.future.isCompleted
             fork(endpoint <*> clientCSeqFilter <=> keepalive(canContinue))
         }
     } yield hmpSdp
@@ -76,7 +76,7 @@ class HmpPartImpl(client: ClientPart)(endpoint: Stream[SipMessage, SipMessage])
     def keepalive(continue: => Boolean)(implicit factory: SipMessageFactory): ConstConsumer[SipResponse, SipRequest, Unit] =
         implicit stream => for {
             _ <- waitFor(1.minute)
-            _ <- stream.write(factory.keepaliveRequest(refresher = "uac", minSE = 90))
+            _ <- stream.write(factory.keepaliveRequest(refresher = "uac"))
             _ <- stream.read(timeout = 10.seconds) >>= {
                 case r: SipResponse if isOk(r) => success()
                 case r => fail("Unexpected keepalive response: " + r)

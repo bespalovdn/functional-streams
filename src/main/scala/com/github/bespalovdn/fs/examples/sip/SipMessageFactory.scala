@@ -16,7 +16,7 @@ trait SipMessageFactory
 {
     def ackRequest(response: SipResponse): SipRequest
     def byeRequest(): SipRequest
-    def keepaliveRequest(): SipRequest
+    def keepaliveRequest(refresher: String): SipRequest
     def inviteRequest(sdp: String = null): SipRequest
 
     def okResponse(request: SipRequest): SipResponse
@@ -39,10 +39,10 @@ object SipMessageFactory
             new SipRequestImpl(msg, sip)
         }
 
-        override def keepaliveRequest(): SipRequest = {
+        override def keepaliveRequest(refresher: String): SipRequest = {
             val msg = sip.dialog.createRequest(Request.UPDATE).asInstanceOf[SIPRequest]
             val sessionExpiresHeader = sip.withHeaderFactory(_.createSessionExpiresHeader(SipConstants.SESSION_EXPIRES))
-            sessionExpiresHeader.setRefresher("uac")
+            sessionExpiresHeader.setRefresher(refresher)
             msg.setHeader(sessionExpiresHeader)
             val minSEHeader = sip.withHeaderFactory(_.createMinSEHeader(SipConstants.MIN_SE))
             msg.setHeader(minSEHeader)
