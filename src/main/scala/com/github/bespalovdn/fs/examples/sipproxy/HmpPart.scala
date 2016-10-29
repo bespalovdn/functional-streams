@@ -1,7 +1,5 @@
 package com.github.bespalovdn.fs.examples.sipproxy
 
-import java.util.concurrent.atomic.AtomicReference
-
 import com.github.bespalovdn.fs.FutureExtensions._
 import com.github.bespalovdn.fs.examples.sip.SipMessage._
 import com.github.bespalovdn.fs.examples.sip.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
@@ -40,7 +38,7 @@ class HmpPartImpl(client: ClientPart)(endpoint: Stream[SipMessage, SipMessage])
         })
         _ <- {
             def canContinue = done.future.isCompleted
-            fork(endpoint <|> clientCSeqFilter <=> keepalive(canContinue))
+            fork(endpoint <*> clientCSeqFilter <=> keepalive(canContinue))
         }
     } yield hmpSdp
 
@@ -78,7 +76,7 @@ class HmpPartImpl(client: ClientPart)(endpoint: Stream[SipMessage, SipMessage])
     def keepalive(continue: => Boolean)(implicit factory: SipMessageFactory): ConstConsumer[SipResponse, SipRequest, Unit] =
         implicit stream => for {
             _ <- waitFor(1.minute)
-            _ <- stream.write(factory.keepaliveUpdateRequest(refresher = "uac", minSE = 90))
+            _ <- stream.write(factory.keepaliveRequest(refresher = "uac", minSE = 90))
             _ <- stream.read(timeout = 10.seconds) >>= {
                 case r: SipResponse if isOk(r) => success()
                 case r => fail("Unexpected keepalive response: " + r)
@@ -86,30 +84,4 @@ class HmpPartImpl(client: ClientPart)(endpoint: Stream[SipMessage, SipMessage])
             _ <- if(continue) keepalive(continue)(factory)(stream) else success()
         } yield consume()
 
-    class CSeqChangedException extends Exception
-
-    def clientCSeqFilter: Pipe[SipMessage, SipMessage, SipResponse, SipRequest] = upstream => {
-        new Stream[SipResponse, SipRequest] {
-            val lastCSeq = new AtomicReference[Option[Long]]()
-            override def write(elem: SipRequest): Future[Unit] = {
-                lastCSeq.set(Some(elem.cseq))
-                upstream.write(elem)
-            }
-            override def read(timeout: Duration): Future[SipResponse] = {
-                val promise = Promise[SipResponse]
-                val currCSeq = lastCSeq.get()
-                val f = repeatOnFail {
-                    if(lastCSeq.get() != currCSeq)
-                        throw new CSeqChangedException()
-                    upstream.read(timeout) >>= {
-                        case r: SipResponse if lastCSeq.get().isEmpty => success(r)
-                        case r: SipResponse if r.cseq == lastCSeq.get().get => success(r)
-                    }
-                }
-                f.onComplete(promise.complete)
-                promise.future
-            }
-        }
-        _ <- keepalive(factory)(stream)
-    } yield consume()
 }
