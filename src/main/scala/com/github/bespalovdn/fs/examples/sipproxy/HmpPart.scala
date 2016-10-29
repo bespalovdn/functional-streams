@@ -7,7 +7,7 @@ import com.github.bespalovdn.fs.examples.SipMessage._
 import com.github.bespalovdn.fs.examples.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
 import com.github.bespalovdn.fs.{Stream, _}
 
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import scala.util.Success
 
@@ -23,15 +23,23 @@ class HmpPartImpl(client: ClientPart)(endpoint: Stream[SipMessage, SipMessage])
                  (implicit factory: SipMessageFactory)
     extends HmpPart with SipCommons
 {
-    private val byeReceived = Promise[Unit]
+    private val hmpByeReceived = Promise[Unit]
+    private val done = Promise[Unit]
 
     override def sendInvite(sdp: String): Future[String] = for {
         hmpSdp <- endpoint <=> invite(sdp)
-        _ <- fork(endpoint <=> {handleBye >> consumer(byeReceived.tryComplete(Success(())))})
-        _ <- fork(endpoint <=> keepalive)
+        _ <- fork(endpoint <=> {
+            handleBye >>
+                consumer(hmpByeReceived.tryComplete(Success(()))) >>
+                consumer(done.tryComplete(Success(())))
+        })
+        _ <- {
+            def canContinue = done.future.isCompleted
+            fork(endpoint <|> clientCSeqFilter <=> keepalive(canContinue))
+        }
     } yield hmpSdp
 
-    override def waitForHmpBye: Future[Unit] = byeReceived.future
+    override def waitForHmpBye: Future[Unit] = hmpByeReceived.future
 
     override def sendBye(): Future[Unit] = endpoint <=> { implicit stream => for {
             _ <- stream.write(factory.byeRequest())
@@ -39,6 +47,7 @@ class HmpPartImpl(client: ClientPart)(endpoint: Stream[SipMessage, SipMessage])
                 case r: SipResponse if isOk(r) => success(consume())
                 case r => fail("hmp bye: invalid response received: " + r)
             }
+            _ <- {done.tryComplete(Success(())); success()}
         } yield consume ()
     }
 
@@ -61,9 +70,16 @@ class HmpPartImpl(client: ClientPart)(endpoint: Stream[SipMessage, SipMessage])
         _ <- stream.write(factory.okResponse(r))
     } yield consume()
 
-    def keepalive(implicit factory: SipMessageFactory): Consumer[Unit] = implicit stream => {
-        ???
-    }
+    def keepalive(continue: => Boolean)(implicit factory: SipMessageFactory): ConstConsumer[SipResponse, SipRequest, Unit] =
+        implicit stream => for {
+            _ <- waitFor(1.minute)
+            _ <- stream.write(factory.keepaliveUpdateRequest(refresher = "uac", minSE = 90))
+            _ <- stream.read(timeout = 1.minute) >>= {
+                case r: SipResponse if isOk(r) => success()
+                case r => fail("Unexpected keepalive response: " + r)
+            }
+            _ <- if(continue) keepalive(continue)(factory)(stream) else success()
+        } yield consume()
 
     class CSeqChangedException extends Exception
 
