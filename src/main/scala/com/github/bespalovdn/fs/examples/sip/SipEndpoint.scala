@@ -35,6 +35,8 @@ class SipEndpoint(val bindAddr: InetSocketAddress)
         val request = event.getRequest.asInstanceOf[SIPRequest]
         ???
     }
+
+    override def processResponse(responseEvent: ResponseEvent): Unit = ???
 }
 
 trait SipStackImpl extends SipStackProperties
