@@ -20,15 +20,20 @@ class SipEndpoint(val bindAddr: InetSocketAddress)
 {
     override def read(timeout: Duration): Future[SipMessage] = ???
 
-    override def write(elem: SipMessage): Future[Unit] = {
-        elem.message match {
-            case r: SIPRequest => r.getTransaction.asInstanceOf[ClientTransaction].sendRequest()
-            case r: SIPResponse => ???
+    override def write(msg: SipMessage): Future[Unit] = {
+        msg match {
+            case r: SipRequest =>
+                r.message.getTransaction.asInstanceOf[ClientTransaction].sendRequest()
+            case r: SipResponse =>
+                val transaction = r.originRequest.message.getTransaction.asInstanceOf[ServerTransaction]
+                transaction.sendResponse(r.message)
         }
+        Future.successful(())
     }
 
     override def processRequest(event: RequestEvent): Unit = {
         val request = event.getRequest.asInstanceOf[SIPRequest]
+        ???
     }
 }
 

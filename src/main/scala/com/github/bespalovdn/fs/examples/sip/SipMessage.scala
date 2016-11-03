@@ -25,6 +25,7 @@ trait SipRequest extends SipMessage{
 }
 trait SipResponse extends SipMessage{
     override private[sip] def message: SIPResponse
+    def originRequest: SipRequest
 }
 
 object SipMessage

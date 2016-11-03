@@ -26,7 +26,7 @@ trait SipMessageFactory
 object SipMessageFactory
 {
     private class SipRequestImpl(val message: SIPRequest, val sip: SipAccessPoint) extends SipRequest
-    private class SipResponseImpl(val message: SIPResponse, val sip: SipAccessPoint) extends SipResponse
+    private class SipResponseImpl(val originRequest: SipRequest, val message: SIPResponse, val sip: SipAccessPoint) extends SipResponse
 
     def create(sip: SipAccessPoint): SipMessageFactory = new SipMessageFactory {
         override def ackRequest(response: SipResponse): SipRequest = {
@@ -131,12 +131,12 @@ object SipMessageFactory
 
         override def okResponse(request: SipRequest): SipResponse = {
             val msg = request.asInstanceOf[SIPRequest].createResponse(Response.OK)
-            new SipResponseImpl(msg, sip)
+            new SipResponseImpl(request, msg, sip)
         }
 
         override def tryingResponse(request: SipRequest): SipResponse = {
             val msg = request.message.createResponse(Response.TRYING)
-            new SipResponseImpl(msg, sip)
+            new SipResponseImpl(request, msg, sip)
         }
     }
 }
