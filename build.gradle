@@ -10,6 +10,7 @@ dependencies {
     compile 'org.scala-lang:scala-library:2.11.8'
 
 
+    // dependencies needed for example with sip-proxy :
     compile group: 'javax.sip', name: 'jain-sip-api', version: '1.2.0'
     compile group: 'javax.sip', name: 'jain-sip-ri', version: '1.2.287'
 }
