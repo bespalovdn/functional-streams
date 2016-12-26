@@ -8,7 +8,7 @@ import javax.sip.message.MessageFactory
 
 import com.github.bespalovdn.fs.Stream
 import gov.nist.javax.sip.header.HeaderFactoryImpl
-import gov.nist.javax.sip.message.{SIPResponse, SIPRequest}
+import gov.nist.javax.sip.message.SIPRequest
 
 import scala.concurrent.Future
 import scala.concurrent.duration.Duration
@@ -37,6 +37,14 @@ class SipEndpoint(val bindAddr: InetSocketAddress)
     }
 
     override def processResponse(responseEvent: ResponseEvent): Unit = ???
+
+    override def processIOException(ioExceptionEvent: IOExceptionEvent): Unit = ???
+
+    override def processTimeout(timeoutEvent: TimeoutEvent): Unit = ???
+
+    override def processTransactionTerminated(transactionTerminatedEvent: TransactionTerminatedEvent): Unit = ???
+
+    override def processDialogTerminated(dialogTerminatedEvent: DialogTerminatedEvent): Unit = ???
 }
 
 trait SipStackImpl extends SipStackProperties
