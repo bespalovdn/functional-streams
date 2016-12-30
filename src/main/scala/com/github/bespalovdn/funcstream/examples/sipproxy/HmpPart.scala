@@ -45,7 +45,7 @@ class HmpPartImpl(client: ClientPart)(endpoint: FStream[SipMessage, SipMessage])
 
     override def waitForHmpBye: Future[Unit] = hmpByeReceived.future
 
-    override def sendBye(): Future[Unit] = endpoint <=> { implicit stream => for {
+    override def sendBye(): Future[Unit] = endpoint <=> FConsumer{ implicit stream => for {
             _ <- stream.write(factory.byeRequest())
             _ <- stream.read() >>= {
                 case r: SipResponse if isOk(r) => success(consume())
@@ -55,34 +55,39 @@ class HmpPartImpl(client: ClientPart)(endpoint: FStream[SipMessage, SipMessage])
         } yield consume ()
     }
 
-    def invite(sdp: String)(implicit factory: SipMessageFactory): SipConsumer[String] = implicit stream => for {
-        _ <- stream.write(factory.inviteRequest(sdp))
-        r <- stream.read() >>= {
-            case r: SipResponse if isTrying(r) => stream.read()
-            case r => success(r)
-        }
-        r <- r match {
-            case r: SipResponse if isOk(r) => success(r)
-            case _ => fail("invite: Unexpected response: " + r)
-        }
-        _ <- stream.write(factory.ackRequest(r))
-    } yield consume(r.content.asInstanceOf[String])
+    def invite(sdp: String)(implicit factory: SipMessageFactory): SipConsumer[String] = FConsumer { implicit stream =>
+        for {
+            _ <- stream.write(factory.inviteRequest(sdp))
+            r <- stream.read() >>= {
+                case r: SipResponse if isTrying(r) => stream.read()
+                case r => success(r)
+            }
+            r <- r match {
+                case r: SipResponse if isOk(r) => success(r)
+                case _ => fail("invite: Unexpected response: " + r)
+            }
+            _ <- stream.write(factory.ackRequest(r))
+        } yield consume(r.content.asInstanceOf[String])
+    }
 
-    def handleBye(implicit factory: SipMessageFactory): SipConsumer[Unit] = implicit stream => for {
-        r <- repeatOnFail(stream.read() >>= {case r: SipRequest if isBye(r) => success(r)})
-        _ <- fork(client.sendBye())
-        _ <- stream.write(factory.okResponse(r))
-    } yield consume()
+    def handleBye(implicit factory: SipMessageFactory): SipConsumer[Unit] = FConsumer { implicit stream =>
+        for {
+            r <- repeatOnFail(stream.read() >>= { case r: SipRequest if isBye(r) => success(r) })
+            _ <- fork(client.sendBye())
+            _ <- stream.write(factory.okResponse(r))
+        } yield consume()
+    }
 
     def keepalive(continue: => Boolean)(implicit factory: SipMessageFactory): ConstConsumer[SipResponse, SipRequest, Unit] =
-        implicit stream => for {
+    FConsumer { implicit stream =>
+        for {
             _ <- waitFor(1.minute)
             _ <- stream.write(factory.keepaliveRequest(refresher = "uac"))
             _ <- stream.read(timeout = 10.seconds) >>= {
                 case r: SipResponse if isOk(r) => success()
                 case r => fail("Unexpected keepalive response: " + r)
             }
-            _ <- if(continue) keepalive(continue)(factory)(stream) else success()
+            _ <- if (continue) keepalive(continue)(factory).apply(stream) else success()
         } yield consume()
-
+    }
 }
