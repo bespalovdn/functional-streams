@@ -8,7 +8,7 @@ trait FConsumer[A, B, C, D, X] extends (FStream[A, B] => Future[(FStream[C, D], 
         FConsumer.combination1(ec)(this)(cXY)
     def >> [E, F, Y](cY: => FConsumer[C, D, E, F, Y])(implicit ec: ExecutionContext): FConsumer[A, B, E, F, Y] =
         FConsumer.combination1(ec)(this)(_ => cY)
-    def <=> [E, F](p: => Pipe[C, D, E, F])(implicit ec: ExecutionContext): FConsumer[A, B, E, F, Unit] =
+    def <=> [E, F](p: => FPipe[C, D, E, F])(implicit ec: ExecutionContext): FConsumer[A, B, E, F, Unit] =
         FConsumer.combination2(ec)(this)(p)
 }
 
@@ -30,7 +30,7 @@ object FConsumer
         }
 
     private def combination2[A, B, C, D, E, F, X](implicit ec: ExecutionContext):
-        FConsumer[A, B, C, D, X] => Pipe[C, D, E, F] => FConsumer[A, B, E, F, Unit] =
+        FConsumer[A, B, C, D, X] => FPipe[C, D, E, F] => FConsumer[A, B, E, F, Unit] =
         c => p => FConsumer { sAB =>
             for {
                 (sCD, x) <- c.apply(sAB)

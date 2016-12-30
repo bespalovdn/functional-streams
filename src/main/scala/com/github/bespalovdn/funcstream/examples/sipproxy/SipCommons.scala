@@ -19,7 +19,7 @@ trait SipCommons extends FutureExtensions
 
     class CSeqChangedException extends Exception
 
-    def clientCSeqFilter: Pipe[SipMessage, SipMessage, SipResponse, SipRequest] = (upstream: FStream[SipMessage, SipMessage]) => {
+    def clientCSeqFilter: FPipe[SipMessage, SipMessage, SipResponse, SipRequest] = (upstream: FStream[SipMessage, SipMessage]) => {
         new FStream[SipResponse, SipRequest] {
             val lastCSeq = new AtomicReference[Option[Long]]()
             override def write(elem: SipRequest): Future[Unit] = {

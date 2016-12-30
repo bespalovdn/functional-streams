@@ -13,7 +13,7 @@ trait FStream[A, B]
     def read(timeout: Duration = null): Future[A]
     def write(elem: B): Future[Unit]
 
-    def <*> [C, D](p: Pipe[A, B, C, D]): FStream[C, D] = {
+    def <*> [C, D](p: FPipe[A, B, C, D]): FStream[C, D] = {
         p(this)
     }
 
