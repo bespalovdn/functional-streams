@@ -14,14 +14,15 @@ trait FStream[A, B]
     def write(elem: B): Future[Unit]
 
     def <=> [C, D](p: FPipe[A, B, C, D]): FStream[C, D] = p.apply(this)
+    def <=> [C, D, X](c: FConsumer[A, B, C, D, X]): Future[X] = c.apply(this).map(_._2)
 
-    def <=> [C, D, X](c: => FConsumer[A, B, C, D, X]): Future[X] = {
-        import scala.concurrent.ExecutionContext.Implicits.global
-        val downStream = new DownStream(this)
-        val f = c(downStream)
-        f.onComplete{_ => downStream.close()}
-        f.map(_._2)
-    }
+//    {
+//        import scala.concurrent.ExecutionContext.Implicits.global
+//        val downStream = new DownStream(this)
+//        val f = c(downStream)
+//        f.onComplete{_ => downStream.close()}
+//        f.map(_._2)
+//    }
 
     private lazy val readQueues = ListBuffer.empty[ConcurrentLinkedQueue[Future[A]]]
 
