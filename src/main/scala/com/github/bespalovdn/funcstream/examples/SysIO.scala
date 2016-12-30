@@ -2,8 +2,6 @@ package com.github.bespalovdn.funcstream.examples
 
 import java.util.Scanner
 
-import com.github.bespalovdn.funcstream
-import com.github.bespalovdn.funcstream.FutureExtensions._
 import com.github.bespalovdn.funcstream._
 import com.github.bespalovdn.funcstream.impl.ClosableStreamImpl
 
@@ -17,39 +15,45 @@ object SysIORunner extends App
 
 trait SysIOTypes
 {
-    type Consumer[A] = funcstream.FConsumer[String, String, String, String, A]
+    type Consumer[A] = FConsumer[String, String, String, String, A]
 }
 
-object SysIO extends SysIOTypes {
+object SysIO extends SysIOTypes with FutureExtensions {
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    def invite: Consumer[Unit] = implicit stream => for {
-        _ <- stream.write("INVITE")
-        res <- stream.read()
-        res <- res match {
-            case "TRYING" => stream.read()
-            case _ => success(res)
-        }
-        _ <- res match {
-            case "OK" => success()
-            case r => fail(s"Unexpected result: $r. Expected: OK")
-        }
-    } yield consume()
-
-    def echo: Consumer[Unit] = implicit stream => for {
-        s <- stream.read()
-        _ <- s.toUpperCase match {
-            case "STOP" => success()
-            case a => stream.write(a) >> echo(stream)
-        }
-    } yield consume()
-
-    def buy: Consumer[Unit] = implicit stream => stream.write("BUY") >> stream.read() >>= {
-        case "OK" => success(consume())
-        case _ => println("Invalid response. Expected: OK"); buy(stream)
+    def invite: Consumer[Unit] = FConsumer { implicit stream =>
+        for {
+            _ <- stream.write("INVITE")
+            res <- stream.read()
+            res <- res match {
+                case "TRYING" => stream.read()
+                case _ => success(res)
+            }
+            _ <- res match {
+                case "OK" => success()
+                case r => fail(s"Unexpected result: $r. Expected: OK")
+            }
+        } yield consume()
     }
 
-    def log(msg: String): Consumer[Unit] = implicit stream => {
+    def echo: Consumer[Unit] = FConsumer { implicit stream =>
+        for {
+            s <- stream.read()
+            _ <- s.toUpperCase match {
+                case "STOP" => success()
+                case a => stream.write(a) >> echo.apply(stream)
+            }
+        } yield consume()
+    }
+
+    def bue: Consumer[Unit] = FConsumer { implicit stream =>
+        stream.write("BUY") >> stream.read() >>= {
+            case "OK" => success(consume())
+            case _ => println("Invalid response. Expected: OK"); bue.apply(stream)
+        }
+    }
+
+    def log(msg: String): Consumer[Unit] = FConsumer { implicit stream =>
         println(msg)
         success(consume())
     }
@@ -59,7 +63,7 @@ object SysIO extends SysIOTypes {
         val consumer = invite >>
             log("Echo server started. Print STOP in order to stop.") >>
             echo >>
-            buy
+            bue
         await(stream <=> consumer)
         println("DONE")
     }
