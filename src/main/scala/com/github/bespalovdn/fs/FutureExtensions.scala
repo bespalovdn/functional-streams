@@ -1,6 +1,7 @@
 package com.github.bespalovdn.fs
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.language.implicitConversions
 
 trait FutureExtensions
 {
@@ -9,6 +10,8 @@ trait FutureExtensions
         def >> [B](fB: => Future[B])(implicit e: ExecutionContext): Future[B] = f flatMap (_ => fB)
         def <|> (f2: Future[A])(implicit e: ExecutionContext): Future[A] = Future.firstCompletedOf(Seq(f, f2))
     }
+
+    implicit def convert2Unit[A](f: Future[A]): Future[Unit] = f >> Future.successful()
 }
 
 object FutureExtensions extends FutureExtensions
