@@ -17,7 +17,7 @@ trait FStream[A, B]
         p(this)
     }
 
-    def <=> [C, D, X](c: => Consumer[A, B, C, D, X]): Future[X] = {
+    def <=> [C, D, X](c: => FConsumer[A, B, C, D, X]): Future[X] = {
         import scala.concurrent.ExecutionContext.Implicits.global
         val downStream = new DownStream(this)
         val f = c(downStream)

@@ -8,7 +8,7 @@ import com.github.bespalovdn.funcstream.examples.sip.{SipMessage, SipRequest, Si
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
-trait SipCommons
+trait SipCommons extends FutureExtensions
 {
     type SipConsumer[A] = ConstConsumer[SipMessage, SipMessage, A]
     type ClientSipConsumer[A] = ConstConsumer[SipResponse, SipRequest, A]
@@ -19,7 +19,7 @@ trait SipCommons
 
     class CSeqChangedException extends Exception
 
-    def clientCSeqFilter: Pipe[SipMessage, SipMessage, SipResponse, SipRequest] = upstream => {
+    def clientCSeqFilter: Pipe[SipMessage, SipMessage, SipResponse, SipRequest] = (upstream: FStream[SipMessage, SipMessage]) => {
         new FStream[SipResponse, SipRequest] {
             val lastCSeq = new AtomicReference[Option[Long]]()
             override def write(elem: SipRequest): Future[Unit] = {

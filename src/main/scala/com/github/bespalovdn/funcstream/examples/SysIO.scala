@@ -17,7 +17,7 @@ object SysIORunner extends App
 
 trait SysIOTypes
 {
-    type Consumer[A] = funcstream.Consumer[String, String, String, String, A]
+    type Consumer[A] = funcstream.FConsumer[String, String, String, String, A]
 }
 
 object SysIO extends SysIOTypes {
