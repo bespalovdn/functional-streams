@@ -4,6 +4,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 
 import com.github.bespalovdn.fs.impl.ClosableStreamImpl
 
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -30,14 +31,14 @@ package object fs
             f.map(_.value)
         }
 
-        private var readQueues = List.empty[ConcurrentLinkedQueue[Future[A]]]
+        private lazy val readQueues = ListBuffer.empty[ConcurrentLinkedQueue[Future[A]]]
 
         private class DownStream(upstream: Stream[A, B]) extends ClosableStreamImpl[A, B]{
             import scala.concurrent.ExecutionContext.Implicits.global
             val readQueue = new ConcurrentLinkedQueue[Future[A]]()
 
-            readQueues.synchronized{ readQueues :+= this.readQueue }
-            this.closed.onComplete{_ => readQueues.synchronized{ readQueues = readQueues.filter(_ ne this.readQueue)} }
+            readQueues.synchronized{ readQueues += this.readQueue }
+            this.closed.onComplete{_ => readQueues.synchronized{ readQueues -= this.readQueue }}
 
             override def write(elem: B): Future[Unit] = checkClosed{ upstream.synchronized{ upstream.write(elem) } }
             override def read(timeout: Duration): Future[A] = checkClosed{
