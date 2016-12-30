@@ -2,7 +2,6 @@ package com.github.bespalovdn.funcstream.examples.sipproxy
 
 import java.util.concurrent.atomic.AtomicReference
 
-import com.github.bespalovdn.funcstream.FutureExtensions._
 import com.github.bespalovdn.funcstream._
 import com.github.bespalovdn.funcstream.examples.sip.{SipMessage, SipRequest, SipResponse}
 
@@ -21,7 +20,7 @@ trait SipCommons
     class CSeqChangedException extends Exception
 
     def clientCSeqFilter: Pipe[SipMessage, SipMessage, SipResponse, SipRequest] = upstream => {
-        new Stream[SipResponse, SipRequest] {
+        new FStream[SipResponse, SipRequest] {
             val lastCSeq = new AtomicReference[Option[Long]]()
             override def write(elem: SipRequest): Future[Unit] = {
                 lastCSeq.set(Some(elem.cseq))

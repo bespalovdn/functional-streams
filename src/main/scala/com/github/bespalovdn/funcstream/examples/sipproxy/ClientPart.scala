@@ -18,7 +18,7 @@ trait ClientPartFactory
     def createClientPart(): Future[ClientPart]
 }
 
-class ClientPartImpl(endpoint: Stream[SipMessage, SipMessage], hmpPartFactory: HmpPartFactory)
+class ClientPartImpl(endpoint: FStream[SipMessage, SipMessage], hmpPartFactory: HmpPartFactory)
     (implicit factory: SipMessageFactory)
     extends ClientPart with SipCommons
 {

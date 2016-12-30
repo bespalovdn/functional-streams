@@ -3,7 +3,7 @@ package com.github.bespalovdn.funcstream.examples
 import com.github.bespalovdn.funcstream.FutureExtensions._
 import com.github.bespalovdn.funcstream.examples.sip.SipMessage._
 import com.github.bespalovdn.funcstream.examples.sip.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
-import com.github.bespalovdn.funcstream.{Stream, _}
+import com.github.bespalovdn.funcstream.{FStream, _}
 
 object SipSample extends App
 {
@@ -20,7 +20,7 @@ object SipClient extends SipSampleTypes
 
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    def sipEndpoint: Stream[SipMessage, SipMessage] = ???
+    def sipEndpoint: FStream[SipMessage, SipMessage] = ???
 
     def invite(implicit factory: SipMessageFactory): Consumer[Unit] = implicit stream => for {
         _ <- stream.write(factory.inviteRequest())

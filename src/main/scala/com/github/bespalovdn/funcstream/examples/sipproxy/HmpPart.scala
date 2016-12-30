@@ -4,7 +4,7 @@ import com.github.bespalovdn.funcstream.FutureExtensions._
 import com.github.bespalovdn.funcstream.examples.sip.SipMessage._
 import com.github.bespalovdn.funcstream.examples.sip.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
 import com.github.bespalovdn.funcstream.impl.TimeoutSupport
-import com.github.bespalovdn.funcstream.{Stream, _}
+import com.github.bespalovdn.funcstream.{FStream, _}
 
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
@@ -23,7 +23,7 @@ trait HmpPartFactory
     def createHmpPart(): Future[HmpPart]
 }
 
-class HmpPartImpl(client: ClientPart)(endpoint: Stream[SipMessage, SipMessage])
+class HmpPartImpl(client: ClientPart)(endpoint: FStream[SipMessage, SipMessage])
                  (implicit factory: SipMessageFactory)
     extends HmpPart with SipCommons with TimeoutSupport
 {

@@ -78,7 +78,7 @@ object StdInOutStreamImpl
 
     private val sin = new Scanner(System.in)
 
-    val stdInOutStream: Stream[String, String] = new ClosableStreamImpl[String, String] {
+    val stdInOutStream: FStream[String, String] = new ClosableStreamImpl[String, String] {
         override def read(timeout: Duration): Future[String] = checkClosed {
             val p = Promise[String]
             Future{

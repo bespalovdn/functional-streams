@@ -2,12 +2,12 @@ package com.github.bespalovdn.funcstream.impl
 
 import java.io.Closeable
 
-import com.github.bespalovdn.funcstream.{FutureExtensions, Stream, StreamClosedException}
+import com.github.bespalovdn.funcstream.{FStream, FutureExtensions, StreamClosedException}
 
 import scala.concurrent.{Future, Promise}
 import scala.util.Success
 
-trait ClosableStream[A, B] extends Stream[A, B] with Closeable
+trait ClosableStream[A, B] extends FStream[A, B] with Closeable
 
 trait ClosableStreamImpl[A, B] extends ClosableStream[A, B] with FutureExtensions
 {

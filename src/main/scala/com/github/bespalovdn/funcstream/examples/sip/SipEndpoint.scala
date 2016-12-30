@@ -6,7 +6,7 @@ import javax.sip._
 import javax.sip.address.AddressFactory
 import javax.sip.message.MessageFactory
 
-import com.github.bespalovdn.funcstream.Stream
+import com.github.bespalovdn.funcstream.FStream
 import gov.nist.javax.sip.header.HeaderFactoryImpl
 import gov.nist.javax.sip.message.SIPRequest
 
@@ -14,7 +14,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 
 class SipEndpoint(val bindAddr: InetSocketAddress)
-    extends Stream[SipMessage, SipMessage]
+    extends FStream[SipMessage, SipMessage]
         with SipStackImpl
         with SipListener
 {
