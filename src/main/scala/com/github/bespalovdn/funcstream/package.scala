@@ -10,7 +10,6 @@ import scala.concurrent.{ExecutionContext, Future}
 
 package object funcstream
 {
-    type Pipe[A, B, C, D] = Stream[A, B] => Stream[C, D]
     type Consumer[A, B, C, D, E] = Stream[A, B] => Future[(Stream[C, D], E)]
     type ConstConsumer[A, B, C] = Consumer[A, B, A, B, C]
 
@@ -89,6 +88,6 @@ package object funcstream
     Consumer[A, B, C, D, X] => Pipe[C, D, E, F] => Consumer[A, B, E, F, Unit] =
         c => p => sAB => for {
             (sCD, x) <- c(sAB)
-            sEF <- Future.successful(p(sCD))
+            sEF <- success(p.apply(sCD))
         } yield (sEF, ())
 }

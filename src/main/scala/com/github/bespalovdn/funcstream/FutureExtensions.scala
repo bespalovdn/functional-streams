@@ -11,7 +11,10 @@ trait FutureExtensions
         def <|> (f2: Future[A])(implicit e: ExecutionContext): Future[A] = Future.firstCompletedOf(Seq(f, f2))
     }
 
-    implicit def convert2Unit[A](f: Future[A]): Future[Unit] = f >> Future.successful()
+    implicit def convert2Unit[A](f: Future[A]): Future[Unit] = {
+        import scala.concurrent.ExecutionContext.Implicits.global
+        f >> Future.successful(())
+    }
 }
 
 object FutureExtensions extends FutureExtensions

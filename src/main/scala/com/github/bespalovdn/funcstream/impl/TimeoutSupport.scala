@@ -28,7 +28,7 @@ trait TimeoutSupport extends FutureExtensions
     def waitFor(timeout: Duration): Future[Unit] = {
         val p = Promise[Unit]
         val task = new TimerTask {
-            override def run(): Unit = p.success()
+            override def run(): Unit = p.success(())
         }
         TimeoutSupport.timer.schedule(task, timeout.toMillis)
         p.future
