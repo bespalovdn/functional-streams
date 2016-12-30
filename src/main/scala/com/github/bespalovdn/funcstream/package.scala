@@ -11,7 +11,7 @@ import scala.concurrent.{ExecutionContext, Future}
 package object funcstream
 {
     type Pipe[A, B, C, D] = Stream[A, B] => Stream[C, D]
-    type Consumer[A, B, C, D, E] = Stream[A, B] => Future[Consumed[C, D, E]]
+    type Consumer[A, B, C, D, E] = Stream[A, B] => Future[(Stream[C, D], E)]
     type ConstConsumer[A, B, C] = Consumer[A, B, A, B, C]
 
     trait Stream[A, B]
@@ -28,7 +28,7 @@ package object funcstream
             val downStream = new DownStream(this)
             val f = c(downStream)
             f.onComplete{_ => downStream.close()}
-            f.map(_.value)
+            f.map(_._2)
         }
 
         private lazy val readQueues = ListBuffer.empty[ConcurrentLinkedQueue[Future[A]]]
@@ -54,8 +54,6 @@ package object funcstream
         }
     }
 
-    case class Consumed[A, B, C](stream: Stream[A, B], value: C)
-
     implicit class ConsumerOps[A, B, C, D, X](cX: Consumer[A, B, C, D, X]){
         def >>= [E, F, Y](cXY: X => Consumer[C, D, E, F, Y])(implicit ec: ExecutionContext): Consumer[A, B, E, F, Y] =
             combination3(ec)(cX)(cXY)
@@ -75,8 +73,8 @@ package object funcstream
     //TODO: remove ActionFailedException. make this function receiving Throwable.
     def fail[A](cause: String): Future[A] = Future.failed(new ActionFailedException(cause))
 
-    def consume[A, B]()(implicit s: Stream[A, B]): Consumed[A, B, Unit] = Consumed(s, ())
-    def consume[A, B, C](value: C)(implicit s: Stream[A, B]): Consumed[A, B, C] = Consumed(s, value)
+    def consume[A, B]()(implicit s: Stream[A, B]): (Stream[A, B], Unit) = (s, ())
+    def consume[A, B, C](value: C)(implicit s: Stream[A, B]): (Stream[A, B], C) = (s, value)
 
     def consumer[A, B, C](fn: => C): Consumer[A, B, A, B, C] = implicit stream => success(consume(fn))
 
@@ -84,13 +82,13 @@ package object funcstream
     Consumer[A, B, C, D, X] => (X => Consumer[C, D, E, F, Y]) => Consumer[A, B, E, F, Y] =
         cX => cXY => stream => for{
             x <- cX(stream)
-            y <- cXY(x.value)(x.stream)
+            y <- cXY(x._2)(x._1)
         } yield y
 
     private def combination4[A, B, C, D, E, F, X](implicit ec: ExecutionContext):
     Consumer[A, B, C, D, X] => Pipe[C, D, E, F] => Consumer[A, B, E, F, Unit] =
         c => p => sAB => for {
-            Consumed(sCD, x) <- c(sAB)
+            (sCD, x) <- c(sAB)
             sEF <- Future.successful(p(sCD))
-        } yield Consumed(sEF, ())
+        } yield (sEF, ())
 }
