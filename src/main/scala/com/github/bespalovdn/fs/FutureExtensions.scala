@@ -1,6 +1,5 @@
 package com.github.bespalovdn.fs
 
-import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
 
 trait FutureExtensions
@@ -15,5 +14,4 @@ trait FutureExtensions
 object FutureExtensions extends FutureExtensions
 {
     def fork[A](f: => Future[A]): Future[Future[A]] = Future.successful(f)
-    def waitFor(timeout: Duration): Future[Unit] = ???
 }

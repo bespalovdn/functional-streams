@@ -2,6 +2,7 @@ package com.github.bespalovdn.fs
 
 import java.util.concurrent.TimeoutException
 
+import com.github.bespalovdn.fs.impl.TimeoutSupport
 import org.scalatest._
 
 import scala.concurrent.duration._
@@ -17,8 +18,8 @@ class FunctionalStreamsTest extends FlatSpec
     implicit def executionContext: ExecutionContext = scala.concurrent.ExecutionContext.global
 
     "The test" should "check if read with timeout works" in {
-        val endpoint = new Stream[Int, Int] {
-            override def read(timeout: Duration): Future[Int] = Promise[Int].future // never completes
+        val endpoint = new Stream[Int, Int] with TimeoutSupport{
+            override def read(timeout: Duration): Future[Int] = withTimeoutDo(timeout)(Promise[Int].future) // never completes
             override def write(elem: Int): Future[Unit] = Future.successful()
         }
 
@@ -32,8 +33,7 @@ class FunctionalStreamsTest extends FlatSpec
         // wait for a while (more than timeout in consumer) and check if result completed with TimeoutException:
         Thread.sleep(100)
         inside (result.value) {
-            case Some(Failure(t: ActionFailedException)) =>
-                t.getCause shouldBe a [TimeoutException]
+            case Some(Failure(t: Throwable)) => t shouldBe a [TimeoutException]
         }
     }
 }
