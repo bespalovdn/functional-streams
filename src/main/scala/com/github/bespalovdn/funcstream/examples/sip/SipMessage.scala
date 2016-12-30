@@ -1,10 +1,10 @@
-package com.github.bespalovdn.fs.examples.sip
+package com.github.bespalovdn.funcstream.examples.sip
 
 import javax.sip.header.CSeqHeader
-import javax.sip.message.{Response, Request}
+import javax.sip.message.{Request, Response}
 
-import com.github.bespalovdn.fs.examples.sip.internal.SipAccessPoint
-import gov.nist.javax.sip.message.{SIPResponse, SIPRequest, SIPMessage}
+import com.github.bespalovdn.funcstream.examples.sip.internal.SipAccessPoint
+import gov.nist.javax.sip.message.{SIPMessage, SIPRequest, SIPResponse}
 
 trait SipMessage{
     def content: AnyRef = message.getContent

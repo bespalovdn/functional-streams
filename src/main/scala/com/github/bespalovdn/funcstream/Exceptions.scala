@@ -1,4 +1,4 @@
-package com.github.bespalovdn.fs
+package com.github.bespalovdn.funcstream
 
 class ActionFailedException(cause: String) extends Exception(cause)
 class StreamClosedException() extends Exception()

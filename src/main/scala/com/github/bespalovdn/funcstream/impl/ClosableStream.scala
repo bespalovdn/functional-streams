@@ -1,8 +1,8 @@
-package com.github.bespalovdn.fs.impl
+package com.github.bespalovdn.funcstream.impl
 
 import java.io.Closeable
 
-import com.github.bespalovdn.fs.{FutureExtensions, Stream, StreamClosedException}
+import com.github.bespalovdn.funcstream.{FutureExtensions, Stream, StreamClosedException}
 
 import scala.concurrent.{Future, Promise}
 import scala.util.Success

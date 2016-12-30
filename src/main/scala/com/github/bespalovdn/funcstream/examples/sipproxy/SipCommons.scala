@@ -1,13 +1,13 @@
-package com.github.bespalovdn.fs.examples.sipproxy
+package com.github.bespalovdn.funcstream.examples.sipproxy
 
 import java.util.concurrent.atomic.AtomicReference
 
-import com.github.bespalovdn.fs._
-import com.github.bespalovdn.fs.examples.sip.{SipRequest, SipResponse, SipMessage}
-import com.github.bespalovdn.fs.FutureExtensions._
+import com.github.bespalovdn.funcstream.FutureExtensions._
+import com.github.bespalovdn.funcstream._
+import com.github.bespalovdn.funcstream.examples.sip.{SipMessage, SipRequest, SipResponse}
 
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Promise, Future, ExecutionContext}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 trait SipCommons
 {

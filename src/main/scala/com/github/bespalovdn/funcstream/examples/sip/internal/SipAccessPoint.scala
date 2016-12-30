@@ -1,13 +1,12 @@
-package com.github.bespalovdn.fs.examples.sip.internal
+package com.github.bespalovdn.funcstream.examples.sip.internal
 
 import java.net.InetSocketAddress
+import javax.sip.Dialog
 import javax.sip.address.AddressFactory
 import javax.sip.header.CallIdHeader
-import javax.sip.message.{MessageFactory, Request}
-import javax.sip.{ClientTransaction, Dialog, ServerTransaction}
+import javax.sip.message.MessageFactory
 
 import gov.nist.javax.sip.header.HeaderFactoryImpl
-import gov.nist.javax.sip.message.SIPRequest
 
 trait SipAccessPoint
 {

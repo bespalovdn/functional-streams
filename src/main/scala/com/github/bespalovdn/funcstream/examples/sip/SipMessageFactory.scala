@@ -1,4 +1,4 @@
-package com.github.bespalovdn.fs.examples.sip
+package com.github.bespalovdn.funcstream.examples.sip
 
 import java.util
 import java.util.UUID
@@ -6,7 +6,7 @@ import javax.sip.address.{Address, SipURI}
 import javax.sip.header._
 import javax.sip.message.{Request, Response}
 
-import com.github.bespalovdn.fs.examples.sip.internal.SipAccessPoint
+import com.github.bespalovdn.funcstream.examples.sip.internal.SipAccessPoint
 import gov.nist.javax.sip.SIPConstants
 import gov.nist.javax.sip.message.{SIPRequest, SIPResponse}
 

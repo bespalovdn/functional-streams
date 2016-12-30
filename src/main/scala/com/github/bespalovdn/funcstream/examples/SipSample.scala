@@ -1,9 +1,9 @@
-package com.github.bespalovdn.fs.examples
+package com.github.bespalovdn.funcstream.examples
 
-import com.github.bespalovdn.fs.FutureExtensions._
-import com.github.bespalovdn.fs.examples.sip.SipMessage._
-import com.github.bespalovdn.fs.examples.sip.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
-import com.github.bespalovdn.fs.{Stream, _}
+import com.github.bespalovdn.funcstream.FutureExtensions._
+import com.github.bespalovdn.funcstream.examples.sip.SipMessage._
+import com.github.bespalovdn.funcstream.examples.sip.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
+import com.github.bespalovdn.funcstream.{Stream, _}
 
 object SipSample extends App
 {

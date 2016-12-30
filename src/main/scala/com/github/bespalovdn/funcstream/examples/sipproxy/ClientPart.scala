@@ -1,9 +1,9 @@
-package com.github.bespalovdn.fs.examples.sipproxy
+package com.github.bespalovdn.funcstream.examples.sipproxy
 
-import com.github.bespalovdn.fs.FutureExtensions._
-import com.github.bespalovdn.fs._
-import com.github.bespalovdn.fs.examples.sip.SipMessage._
-import com.github.bespalovdn.fs.examples.sip.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
+import com.github.bespalovdn.funcstream.FutureExtensions._
+import com.github.bespalovdn.funcstream._
+import com.github.bespalovdn.funcstream.examples.sip.SipMessage._
+import com.github.bespalovdn.funcstream.examples.sip.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
 
 import scala.concurrent.Future
 

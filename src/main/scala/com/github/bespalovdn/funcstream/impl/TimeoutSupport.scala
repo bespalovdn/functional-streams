@@ -1,9 +1,9 @@
-package com.github.bespalovdn.fs.impl
+package com.github.bespalovdn.funcstream.impl
 
 import java.util.concurrent.TimeoutException
 import java.util.{Timer, TimerTask}
 
-import com.github.bespalovdn.fs.FutureExtensions
+import com.github.bespalovdn.funcstream.FutureExtensions
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}

@@ -1,4 +1,4 @@
-package com.github.bespalovdn.fs
+package com.github.bespalovdn.funcstream
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions

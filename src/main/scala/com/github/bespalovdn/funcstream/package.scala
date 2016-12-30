@@ -2,13 +2,13 @@ package com.github.bespalovdn
 
 import java.util.concurrent.ConcurrentLinkedQueue
 
-import com.github.bespalovdn.fs.impl.ClosableStreamImpl
+import com.github.bespalovdn.funcstream.impl.ClosableStreamImpl
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
 
-package object fs
+package object funcstream
 {
     type Pipe[A, B, C, D] = Stream[A, B] => Stream[C, D]
     type Consumer[A, B, C, D, E] = Stream[A, B] => Future[Consumed[C, D, E]]

@@ -1,11 +1,11 @@
-package com.github.bespalovdn.fs.examples
+package com.github.bespalovdn.funcstream.examples
 
 import java.util.Scanner
 
-import com.github.bespalovdn.fs
-import com.github.bespalovdn.fs.FutureExtensions._
-import com.github.bespalovdn.fs._
-import com.github.bespalovdn.fs.impl.ClosableStreamImpl
+import com.github.bespalovdn.funcstream
+import com.github.bespalovdn.funcstream.FutureExtensions._
+import com.github.bespalovdn.funcstream._
+import com.github.bespalovdn.funcstream.impl.ClosableStreamImpl
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
@@ -17,7 +17,7 @@ object SysIORunner extends App
 
 trait SysIOTypes
 {
-    type Consumer[A] = fs.Consumer[String, String, String, String, A]
+    type Consumer[A] = funcstream.Consumer[String, String, String, String, A]
 }
 
 object SysIO extends SysIOTypes {

@@ -1,10 +1,10 @@
-package com.github.bespalovdn.fs.examples.sipproxy
+package com.github.bespalovdn.funcstream.examples.sipproxy
 
-import com.github.bespalovdn.fs.FutureExtensions._
-import com.github.bespalovdn.fs.examples.sip.SipMessage._
-import com.github.bespalovdn.fs.examples.sip.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
-import com.github.bespalovdn.fs.impl.TimeoutSupport
-import com.github.bespalovdn.fs.{Stream, _}
+import com.github.bespalovdn.funcstream.FutureExtensions._
+import com.github.bespalovdn.funcstream.examples.sip.SipMessage._
+import com.github.bespalovdn.funcstream.examples.sip.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
+import com.github.bespalovdn.funcstream.impl.TimeoutSupport
+import com.github.bespalovdn.funcstream.{Stream, _}
 
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}

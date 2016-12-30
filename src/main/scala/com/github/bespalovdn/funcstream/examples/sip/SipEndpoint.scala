@@ -1,4 +1,4 @@
-package com.github.bespalovdn.fs.examples.sip
+package com.github.bespalovdn.funcstream.examples.sip
 
 import java.net.InetSocketAddress
 import java.util.Properties
@@ -6,7 +6,7 @@ import javax.sip._
 import javax.sip.address.AddressFactory
 import javax.sip.message.MessageFactory
 
-import com.github.bespalovdn.fs.Stream
+import com.github.bespalovdn.funcstream.Stream
 import gov.nist.javax.sip.header.HeaderFactoryImpl
 import gov.nist.javax.sip.message.SIPRequest
 

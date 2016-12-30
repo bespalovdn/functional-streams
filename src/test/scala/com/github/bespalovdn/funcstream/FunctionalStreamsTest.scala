@@ -1,8 +1,8 @@
-package com.github.bespalovdn.fs
+package com.github.bespalovdn.funcstream
 
 import java.util.concurrent.TimeoutException
 
-import com.github.bespalovdn.fs.impl.TimeoutSupport
+import com.github.bespalovdn.funcstream.impl.TimeoutSupport
 import org.scalatest._
 
 import scala.concurrent.duration._
