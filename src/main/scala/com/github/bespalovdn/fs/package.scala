@@ -26,7 +26,7 @@ package object fs
             import scala.concurrent.ExecutionContext.Implicits.global
             val downStream = new DownStream(this)
             val f = c(downStream)
-            f.onComplete{case _ => downStream.close()}
+            f.onComplete{_ => downStream.close()}
             f.map(_.value)
         }
 
@@ -37,7 +37,7 @@ package object fs
             val readQueue = new ConcurrentLinkedQueue[Future[A]]()
 
             readQueues :+= this.readQueue
-            this.closed.onComplete{case _ => readQueues = readQueues.filter(_ ne this.readQueue)}
+            this.closed.onComplete{_ => readQueues = readQueues.filter(_ ne this.readQueue)}
 
             override def write(elem: B): Future[Unit] = checkClosed{ upstream.synchronized{ upstream.write(elem) } }
             override def read(timeout: Duration): Future[A] = checkClosed{
