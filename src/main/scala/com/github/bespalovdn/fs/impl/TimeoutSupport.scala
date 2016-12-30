@@ -11,13 +11,18 @@ import scala.concurrent.{Future, Promise}
 trait TimeoutSupport extends FutureExtensions
 {
     def withTimeoutDo[A](timeout: Duration)(fn: => Future[A]): Future[A] = {
-        val p = Promise[A]
-        val task = new TimerTask {
-            override def run(): Unit = p.failure(new TimeoutException())
+        if(timeout == null) fn
+        else {
+            val p = Promise[A]
+            val task = new TimerTask {
+                override def run(): Unit = p.failure(new TimeoutException())
+            }
+            TimeoutSupport.timer.schedule(task, timeout.toMillis)
+
+            implicit def ec = scala.concurrent.ExecutionContext.global
+
+            fn <|> p.future
         }
-        TimeoutSupport.timer.schedule(task, timeout.toMillis)
-        implicit def ec = scala.concurrent.ExecutionContext.global
-        fn <|> p.future
     }
 
     def waitFor(timeout: Duration): Future[Unit] = {
