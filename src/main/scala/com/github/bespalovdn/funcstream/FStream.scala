@@ -13,9 +13,7 @@ trait FStream[A, B]
     def read(timeout: Duration = null): Future[A]
     def write(elem: B): Future[Unit]
 
-    def <*> [C, D](p: FPipe[A, B, C, D]): FStream[C, D] = {
-        p(this)
-    }
+    def <=> [C, D](p: FPipe[A, B, C, D]): FStream[C, D] = p.apply(this)
 
     def <=> [C, D, X](c: => FConsumer[A, B, C, D, X]): Future[X] = {
         import scala.concurrent.ExecutionContext.Implicits.global

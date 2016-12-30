@@ -39,7 +39,7 @@ class HmpPartImpl(client: ClientPart)(endpoint: FStream[SipMessage, SipMessage])
         })
         _ <- {
             def canContinue = !done.future.isCompleted
-            fork(endpoint <*> clientCSeqFilter <=> keepalive(canContinue))
+            fork(endpoint <=> clientCSeqFilter <=> keepalive(canContinue))
         }
     } yield hmpSdp
 
