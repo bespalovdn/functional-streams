@@ -17,8 +17,8 @@ trait FConsumer[A, B, C, D, X] extends (FStream[A, B] => Future[(FStream[C, D], 
     def <=> [E, F](p: => FPipe[C, D, E, F])(implicit ec: ExecutionContext): FConsumer[A, B, E, F, Unit] =
         FConsumer.combination2(ec)(this)(p)
 
-    def fork[E, F, Y]: FConsumer[C, D, E, F, Y] => FConsumer[C, D, C, D, Future[Y]] = cY => FConsumer { stream => {
-            import scala.concurrent.ExecutionContext.Implicits.global
+    def fork[E, F, Y](implicit ec: ExecutionContext):
+    FConsumer[C, D, E, F, Y] => FConsumer[C, D, C, D, Future[Y]] = cY => FConsumer { stream => {
             val (s1, s2) = FConsumer.forkStream(stream)
             val fY = cY.apply(s2)
             fY.onComplete { _ => s2.close() }
