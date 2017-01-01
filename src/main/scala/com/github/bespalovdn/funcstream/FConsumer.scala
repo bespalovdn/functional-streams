@@ -1,5 +1,11 @@
 package com.github.bespalovdn.funcstream
 
+import java.util.concurrent.ConcurrentLinkedQueue
+
+import com.github.bespalovdn.funcstream.impl.{ClosableStream, ClosableStreamImpl}
+
+import scala.collection.mutable.ListBuffer
+import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
 
 trait FConsumer[A, B, C, D, X] extends (FStream[A, B] => Future[(FStream[C, D], X)])
@@ -11,45 +17,14 @@ trait FConsumer[A, B, C, D, X] extends (FStream[A, B] => Future[(FStream[C, D], 
     def <=> [E, F](p: => FPipe[C, D, E, F])(implicit ec: ExecutionContext): FConsumer[A, B, E, F, Unit] =
         FConsumer.combination2(ec)(this)(p)
 
-
-    //    def fork[A, B, C, D, X]: Consumer[A, B, C, D, X] => Consumer[A, B, A, B, Future[X]] = c => stream => {
-    //        import scala.concurrent.ExecutionContext.Implicits.global
-    //        val (s1, s2) = forkStream(stream)
-    //        val fX = c(s1)
-    //        fX.onComplete{
-    //            case _ => s1.close()
-    //        }
-    //        Future.successful(Consumed(s2, fX.map(_.value)))
-    //    }
-    //
-    //    private def forkStream[A, B]: Stream[A, B] => (ClosableStream[A, B], ClosableStream[A, B]) = stream => {
-    //        import scala.concurrent.ExecutionContext.Implicits.global
-    //
-    //        var readQueues = List.empty[ConcurrentLinkedQueue[Future[A]]]
-    //
-    //        class DownStream extends ClosableStreamImpl[A, B]{
-    //            val readQueue = new ConcurrentLinkedQueue[Future[A]]()
-    //
-    //            readQueues :+= readQueue
-    //            closed.onComplete{case _ => readQueues = readQueues.filter(_ ne readQueue)}
-    //
-    //            override def write(elem: B): Future[Unit] = checkClosed{ stream.synchronized{ stream.write(elem) } }
-    //            override def read(): Future[A] = checkClosed{
-    //                readQueue.poll() match {
-    //                    case null =>
-    //                        val f = stream.synchronized(stream.read())
-    //                        readQueues.foreach(_ offer f)
-    //                        Option(readQueue.poll()).getOrElse(this.read())
-    //                    case elem =>
-    //                        elem
-    //                }
-    //            }
-    //        }
-    //
-    //        val s1 = new DownStream()
-    //        val s2 = new DownStream()
-    //        (s1, s2)
-    //    }
+    def fork[E, F, Y]: FConsumer[C, D, E, F, Y] => FConsumer[C, D, C, D, Future[Y]] = cY => FConsumer { stream => {
+            import scala.concurrent.ExecutionContext.Implicits.global
+            val (s1, s2) = FConsumer.forkStream(stream)
+            val fY = cY.apply(s2)
+            fY.onComplete { _ => s2.close() }
+            success(consume(fY.map(_._2))(s1))
+        }
+    }
 }
 
 object FConsumer
@@ -77,4 +52,33 @@ object FConsumer
                 sEF <- success(p.apply(sCD))
             } yield (sEF, ())
         }
+
+    private def forkStream[A, B]: FStream[A, B] => (ClosableStream[A, B], ClosableStream[A, B]) = stream => {
+        import scala.concurrent.ExecutionContext.Implicits.global
+
+        val readQueues = ListBuffer.empty[ConcurrentLinkedQueue[Future[A]]]
+
+        class DownStream extends ClosableStreamImpl[A, B]{
+            val readQueue = new ConcurrentLinkedQueue[Future[A]]()
+
+            readQueues.synchronized{ readQueues += readQueue }
+            closed.onComplete{case _ => readQueues.synchronized{ readQueues -= readQueue }}
+
+            override def write(elem: B): Future[Unit] = checkClosed{ stream.synchronized{ stream.write(elem) } }
+            override def read(timeout: Duration): Future[A] = checkClosed{
+                readQueue.poll() match {
+                    case null =>
+                        val f = stream.synchronized(stream.read(timeout))
+                        readQueues.foreach(_ offer f)
+                        Option(readQueue.poll()).get //must be initialized
+                    case elem =>
+                        elem
+                }
+            }
+        }
+
+        val s1 = new DownStream()
+        val s2 = new DownStream()
+        (s1, s2)
+    }
 }

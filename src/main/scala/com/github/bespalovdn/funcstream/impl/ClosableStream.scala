@@ -19,7 +19,7 @@ trait ClosableStreamImpl[A, B] extends ClosableStream[A, B] with FutureExtension
         _closed.tryComplete(Success(()))
     }
 
-    protected def checkClosed[A](f: => Future[A]): Future[A] ={
+    protected def checkClosed[X](f: => Future[X]): Future[X] ={
         import scala.concurrent.ExecutionContext.Implicits.global
         if(_closed.isCompleted)
             Future.failed(new StreamClosedException())
