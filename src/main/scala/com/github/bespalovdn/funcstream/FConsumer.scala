@@ -42,8 +42,8 @@ object FConsumer
         }
     }
 
-    def fork[A, B, C, D, Y](implicit ec: ExecutionContext):
-    FConsumer[A, B, C, D, Y] => FConsumer[A, B, A, B, Future[Y]] = cY => FConsumer { stream => {
+    def fork[A, B, C, D, Y](cY: FConsumer[A, B, C, D, Y])
+                           (implicit ec: ExecutionContext): FConsumer[A, B, A, B, Future[Y]] = FConsumer { stream => {
             val (s1, s2) = FConsumer.forkStream(stream)
             val fY = cY.apply(s2)
             fY.onComplete { _ => s2.close() }

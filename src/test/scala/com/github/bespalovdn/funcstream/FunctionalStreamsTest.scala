@@ -73,6 +73,8 @@ class FunctionalStreamsTest extends FlatSpec
                 endpoint.readCount should be (0)
             } >> echoServer >> check {
                 endpoint.readCount should be (1)
+            } >> FConsumer.fork(echoServer) >> echoServer >> check {
+                endpoint.readCount should be (3)
             }
         }
     }
