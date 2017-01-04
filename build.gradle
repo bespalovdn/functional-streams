@@ -8,7 +8,7 @@ repositories {
 
 dependencies {
     compile 'org.scala-lang:scala-library:2.12.1'
-    compile 'org.scalatest:scalatest_2.12:3.0.1'
+    testCompile 'org.scalatest:scalatest_2.12:3.0.1'
 
 
     // dependencies needed for example with sip-proxy :
