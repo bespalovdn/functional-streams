@@ -10,8 +10,8 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 
 trait SipCommons extends FutureExtensions
 {
-    type SipConsumer[A] = ConstConsumer[SipMessage, SipMessage, A]
-    type ClientSipConsumer[A] = ConstConsumer[SipResponse, SipRequest, A]
+    type SipConsumer[A] = FPlainConsumer[SipMessage, SipMessage, A]
+    type ClientSipConsumer[A] = FPlainConsumer[SipResponse, SipRequest, A]
 
     implicit def executionContext: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
 

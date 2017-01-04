@@ -26,7 +26,7 @@ class FunctionalStreamsTest extends FlatSpec
             override def write(elem: Int): Future[Unit] = Future.successful(())
         }
 
-        val consumer: ConstConsumer[Int, Int, Unit] = FConsumer { implicit stream => for {
+        val consumer: FPlainConsumer[Int, Int, Unit] = FConsumer { implicit stream => for {
                 _ <- stream.read(timeout = 10.millisecond)
             } yield consume()
         }
@@ -55,7 +55,7 @@ class FunctionalStreamsTest extends FlatSpec
             def readCount: Int = _readCount
         }
 
-        type Consumer = ConstConsumer[Int, Int, Unit]
+        type Consumer = FPlainConsumer[Int, Int, Unit]
 
         val echoServer: Consumer = FConsumer { implicit stream => for {
                 a <- stream.read()

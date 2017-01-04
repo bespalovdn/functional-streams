@@ -1,6 +1,5 @@
 package com.github.bespalovdn.funcstream.examples
 
-import com.github.bespalovdn.funcstream.FutureExtensions._
 import com.github.bespalovdn.funcstream.examples.sip.SipMessage._
 import com.github.bespalovdn.funcstream.examples.sip.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
 import com.github.bespalovdn.funcstream.{FStream, _}
@@ -12,7 +11,7 @@ object SipSample extends App
 
 trait SipSampleTypes
 {
-    type Consumer[A] = ConstConsumer[SipMessage, SipMessage, A]
+    type Consumer[A] = FPlainConsumer[SipMessage, SipMessage, A]
 }
 
 object SipClient extends SipSampleTypes

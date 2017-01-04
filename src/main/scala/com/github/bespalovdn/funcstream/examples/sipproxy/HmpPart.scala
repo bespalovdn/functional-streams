@@ -78,7 +78,7 @@ class HmpPartImpl(client: ClientPart)(endpoint: FStream[SipMessage, SipMessage])
         } yield consume()
     }
 
-    def keepalive(continue: => Boolean)(implicit factory: SipMessageFactory): ConstConsumer[SipResponse, SipRequest, Unit] =
+    def keepalive(continue: => Boolean)(implicit factory: SipMessageFactory): FPlainConsumer[SipResponse, SipRequest, Unit] =
     FConsumer { implicit stream =>
         for {
             _ <- waitFor(1.minute)

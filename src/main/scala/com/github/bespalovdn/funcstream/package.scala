@@ -4,7 +4,7 @@ import scala.concurrent.Future
 
 package object funcstream
 {
-    type ConstConsumer[A, B, C] = FConsumer[A, B, A, B, C]
+    type FPlainConsumer[A, B, C] = FConsumer[A, B, A, B, C]
 
 //    def fork[A, B, C, D, X]: Consumer[A, B, C, D, X] => Consumer[A, B, A, B, Future[X]] = c => stream => {
 //        val fX = stream <=> c
