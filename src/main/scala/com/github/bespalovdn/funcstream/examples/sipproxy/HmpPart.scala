@@ -1,6 +1,5 @@
 package com.github.bespalovdn.funcstream.examples.sipproxy
 
-import com.github.bespalovdn.funcstream.FutureExtensions._
 import com.github.bespalovdn.funcstream.examples._
 import com.github.bespalovdn.funcstream.examples.sip.SipMessage._
 import com.github.bespalovdn.funcstream.examples.sip.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
@@ -33,14 +32,14 @@ class HmpPartImpl(client: ClientPart)(endpoint: FStream[SipMessage, SipMessage])
 
     override def sendInvite(sdp: String): Future[String] = for {
         hmpSdp <- endpoint <=> invite(sdp)
-        _ <- fork(endpoint <=> {
+        _ <- FutureExtensions.fork(endpoint <=> {
             handleBye >>
                 consumer(hmpByeReceived.tryComplete(Success(()))) >>
                 consumer(done.tryComplete(Success(())))
         })
         _ <- {
             def canContinue = !done.future.isCompleted
-            fork(endpoint <=> clientCSeqFilter <=> keepalive(canContinue))
+            FutureExtensions.fork(endpoint <=> clientCSeqFilter <=> keepalive(canContinue))
         }
     } yield hmpSdp
 
@@ -74,7 +73,7 @@ class HmpPartImpl(client: ClientPart)(endpoint: FStream[SipMessage, SipMessage])
     def handleBye(implicit factory: SipMessageFactory): SipConsumer[Unit] = FConsumer { implicit stream =>
         for {
             r <- repeatOnFail(stream.read() >>= { case r: SipRequest if isBye(r) => success(r) })
-            _ <- fork(client.sendBye())
+            _ <- FutureExtensions.fork(client.sendBye())
             _ <- stream.write(factory.okResponse(r))
         } yield consume()
     }
