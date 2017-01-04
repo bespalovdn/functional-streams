@@ -16,6 +16,22 @@ trait FConsumer[A, B, C, D, X] extends (FStream[A, B] => Future[(FStream[C, D], 
         FConsumer.combination1(ec)(this)(_ => cY)
     def <=> [E, F](p: => FPipe[C, D, E, F])(implicit ec: ExecutionContext): FConsumer[A, B, E, F, Unit] =
         FConsumer.combination2(ec)(this)(p)
+
+    def map[Y](fn: X => Y)(implicit ec: ExecutionContext): FConsumer[A, B, C, D, Y] = FConsumer { sAB => for {
+            (sCD, x) <- this.apply(sAB)
+        } yield consume(fn(x))(sCD)
+    }
+
+    def flatMap[E, F, Y](fn: X => FConsumer[C, D, E, F, Y])(implicit ec: ExecutionContext): FConsumer[A, B, E, F, Y] =
+    FConsumer { (sAB: FStream[A, B]) => {
+            import FutureExtensions._
+            this.apply(sAB) >>= {
+                case (sCD, x) =>
+                    val cY: FConsumer[C, D, E, F, Y] = fn(x)
+                    cY.apply(sCD)
+            }
+        }
+    }
 }
 
 object FConsumer
