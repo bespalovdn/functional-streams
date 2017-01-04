@@ -1,6 +1,7 @@
 package com.github.bespalovdn.funcstream.examples.sipproxy
 
 import com.github.bespalovdn.funcstream.FutureExtensions._
+import com.github.bespalovdn.funcstream.examples._
 import com.github.bespalovdn.funcstream.examples.sip.SipMessage._
 import com.github.bespalovdn.funcstream.examples.sip.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
 import com.github.bespalovdn.funcstream.impl.TimeoutSupport
@@ -25,7 +26,7 @@ trait HmpPartFactory
 
 class HmpPartImpl(client: ClientPart)(endpoint: FStream[SipMessage, SipMessage])
                  (implicit factory: SipMessageFactory)
-    extends HmpPart with SipCommons with TimeoutSupport
+    extends HmpPart with SipCommons with TimeoutSupport with FutureExtensions
 {
     private val hmpByeReceived = Promise[Unit]
     private val done = Promise[Unit]

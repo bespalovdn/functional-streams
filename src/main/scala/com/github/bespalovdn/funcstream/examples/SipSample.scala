@@ -14,34 +14,38 @@ trait SipSampleTypes
     type Consumer[A] = FPlainConsumer[SipMessage, SipMessage, A]
 }
 
-object SipClient extends SipSampleTypes
+object SipClient extends SipSampleTypes with FutureExtensions
 {
 
     import scala.concurrent.ExecutionContext.Implicits.global
 
     def sipEndpoint: FStream[SipMessage, SipMessage] = ???
 
-    def invite(implicit factory: SipMessageFactory): Consumer[Unit] = implicit stream => for {
-        _ <- stream.write(factory.inviteRequest())
-        r <- stream.read() >>= {
-            case r: SipResponse if isTrying(r) => stream.read()
-            case r => success(r)
-        }
-        _ <- r match {
-            case r: SipResponse if isOk(r) => success()
-            case _ => fail("invite: Unexpected response: " + r)
-        }
-    } yield consume()
+    def invite(implicit factory: SipMessageFactory): Consumer[Unit] = FConsumer { implicit stream => for {
+            _ <- stream.write(factory.inviteRequest())
+            r <- stream.read() >>= {
+                case r: SipResponse if isTrying(r) => stream.read()
+                case r => success(r)
+            }
+            _ <- r match {
+                case r: SipResponse if isOk(r) => success()
+                case _ => fail("invite: Unexpected response: " + r)
+            }
+        } yield consume()
+    }
 
-    def bye(implicit factory: SipMessageFactory): Consumer[Unit] = implicit stream =>
+    def bye(implicit factory: SipMessageFactory): Consumer[Unit] = FConsumer { implicit stream =>
         stream.write(factory.byeRequest()) >> stream.read() >>= {
             case r: SipResponse if isOk(r) => success(consume())
             case r => fail("bye: invalid response: " + r) //TODO: add retry logic
         }
+    }
 
-    def waitForBye(implicit factory: SipMessageFactory): Consumer[Unit] = implicit stream => stream.read() >>= {
-        case r: SipRequest if isBye(r) => stream.write(factory.okResponse(r)) >> success(consume())
-        case _ => waitForBye(factory)(stream)
+    def waitForBye(implicit factory: SipMessageFactory): Consumer[Unit] = FConsumer { implicit stream =>
+        stream.read() >>= {
+            case r: SipRequest if isBye(r) => stream.write(factory.okResponse(r)) >> success(consume())
+            case _ => waitForBye(factory).apply(stream)
+        }
     }
 
     class ByeReceivedException extends Exception

@@ -1,6 +1,7 @@
 package com.github.bespalovdn.funcstream.examples.sipproxy
 
 import com.github.bespalovdn.funcstream._
+import com.github.bespalovdn.funcstream.examples._
 import com.github.bespalovdn.funcstream.examples.sip.SipMessage._
 import com.github.bespalovdn.funcstream.examples.sip.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
 
