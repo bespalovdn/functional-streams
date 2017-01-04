@@ -16,15 +16,6 @@ trait FConsumer[A, B, C, D, X] extends (FStream[A, B] => Future[(FStream[C, D], 
         FConsumer.combination1(ec)(this)(_ => cY)
     def <=> [E, F](p: => FPipe[C, D, E, F])(implicit ec: ExecutionContext): FConsumer[A, B, E, F, Unit] =
         FConsumer.combination2(ec)(this)(p)
-
-    def fork[E, F, Y](implicit ec: ExecutionContext):
-    FConsumer[C, D, E, F, Y] => FConsumer[C, D, C, D, Future[Y]] = cY => FConsumer { stream => {
-            val (s1, s2) = FConsumer.forkStream(stream)
-            val fY = cY.apply(s2)
-            fY.onComplete { _ => s2.close() }
-            success(consume(fY.map(_._2))(s1))
-        }
-    }
 }
 
 object FConsumer
@@ -32,6 +23,15 @@ object FConsumer
     def apply[A, B, C, D, E](fn: FStream[A, B] => Future[(FStream[C, D], E)]): FConsumer[A, B, C, D, E] = {
         new FConsumer[A, B, C, D, E] {
             override def apply(stream: FStream[A, B]): Future[(FStream[C, D], E)] = fn(stream)
+        }
+    }
+
+    def fork[A, B, C, D, Y](implicit ec: ExecutionContext):
+    FConsumer[A, B, C, D, Y] => FConsumer[A, B, A, B, Future[Y]] = cY => FConsumer { stream => {
+            val (s1, s2) = FConsumer.forkStream(stream)
+            val fY = cY.apply(s2)
+            fY.onComplete { _ => s2.close() }
+            success(consume(fY.map(_._2))(s1))
         }
     }
 
