@@ -1,6 +1,10 @@
-version = '1.0-SNAPSHOT'
-
 apply plugin: 'scala'
+apply plugin: 'maven'
+apply plugin: 'signing'
+
+group = "com.github.bespalovdn"
+archivesBaseName = "functional-streams"
+version = '1.0.1-SNAPSHOT'
 
 compileScala {
     options.compilerArgs << "-deprecation"
@@ -14,4 +18,70 @@ dependencies {
     compile 'org.scala-lang:scala-library:2.12.1'
     testCompile 'org.scalatest:scalatest_2.12:3.0.1'
     testCompile 'junit:junit:4.12'
+}
+
+// add sources/javadoc to archive:
+task javadocJar(type: Jar) {
+    classifier = 'javadoc'
+    from javadoc
+}
+
+task sourcesJar(type: Jar) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+artifacts {
+    archives javadocJar, sourcesJar
+}
+
+// signing artifacts:
+signing {
+    sign configurations.archives
+}
+
+// metadata definition and upload:
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            beforeDeployment { deployment -> signing.signPom(deployment) }
+
+            repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                authentication(userName: ossrhUsername, password: ossrhPassword)
+            }
+
+            snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+                authentication(userName: ossrhUsername, password: ossrhPassword)
+            }
+
+            pom.project {
+                name 'functional-streams'
+                packaging 'jar'
+                // optionally artifactId can be defined here
+                description 'The model to deal with async IO in functional style.'
+                url 'https://github.com/bespalovdn/functional-streams'
+
+                scm {
+                    connection 'scm:git:git://github.com/bespalovdn/functional-streams.git'
+                    developerConnection 'scm:git:git@github.com:bespalovdn/functional-streams.git'
+                    url 'https://github.com/bespalovdn/functional-streams'
+                }
+
+                licenses {
+                    license {
+                        name 'The Apache License, Version 2.0'
+                        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+
+                developers {
+                    developer {
+                        id 'bespalovdn'
+                        name 'Dmitry Bespalov'
+                        email 'bespalovdn@gmail.com'
+                    }
+                }
+            }
+        }
+    }
 }
