@@ -9,6 +9,8 @@ package object funcstream
     def success[A](value: A): Future[A] = Future.successful(value)
     def success(): Future[Unit] = success(())
 
+    def fail[A](t: Throwable): Future[A] = Future.failed(t)
+
     def consume[A, B]()(implicit s: FStream[A, B]): (FStream[A, B], Unit) = (s, ())
     def consume[A, B, C](value: C)(implicit s: FStream[A, B]): (FStream[A, B], C) = (s, value)
 
