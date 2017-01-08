@@ -2,7 +2,7 @@ package com.github.bespalovdn.funcstream
 
 import java.util.concurrent.ConcurrentLinkedQueue
 
-import com.github.bespalovdn.funcstream.impl.{ClosableStream, ClosableStreamImpl}
+import com.github.bespalovdn.funcstream.ext.{ClosableStream, ClosableStreamImpl}
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.Duration

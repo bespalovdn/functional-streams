@@ -1,4 +1,4 @@
-package com.github.bespalovdn.funcstream.impl
+package com.github.bespalovdn.funcstream.ext
 
 import java.io.Closeable
 

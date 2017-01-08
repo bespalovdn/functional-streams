@@ -1,4 +1,4 @@
-package com.github.bespalovdn.funcstream.impl
+package com.github.bespalovdn.funcstream.ext
 
 import java.util.concurrent.TimeoutException
 import java.util.{Timer, TimerTask}

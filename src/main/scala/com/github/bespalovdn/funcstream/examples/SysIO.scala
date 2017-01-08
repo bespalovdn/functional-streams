@@ -3,7 +3,7 @@ package com.github.bespalovdn.funcstream.examples
 import java.util.Scanner
 
 import com.github.bespalovdn.funcstream._
-import com.github.bespalovdn.funcstream.impl.ClosableStreamImpl
+import com.github.bespalovdn.funcstream.ext.ClosableStreamImpl
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}

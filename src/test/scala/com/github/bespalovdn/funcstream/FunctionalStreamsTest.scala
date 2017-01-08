@@ -2,7 +2,7 @@ package com.github.bespalovdn.funcstream
 
 import java.util.concurrent.TimeoutException
 
-import com.github.bespalovdn.funcstream.impl.TimeoutSupport
+import com.github.bespalovdn.funcstream.ext.TimeoutSupport
 import org.junit.runner.RunWith
 import org.scalatest._
 import org.scalatest.junit.JUnitRunner

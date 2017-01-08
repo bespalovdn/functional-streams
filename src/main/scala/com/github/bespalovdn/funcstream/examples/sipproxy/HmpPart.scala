@@ -3,7 +3,7 @@ package com.github.bespalovdn.funcstream.examples.sipproxy
 import com.github.bespalovdn.funcstream.examples._
 import com.github.bespalovdn.funcstream.examples.sip.SipMessage._
 import com.github.bespalovdn.funcstream.examples.sip.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
-import com.github.bespalovdn.funcstream.impl.TimeoutSupport
+import com.github.bespalovdn.funcstream.ext.TimeoutSupport
 import com.github.bespalovdn.funcstream.{FStream, _}
 
 import scala.concurrent.duration._
