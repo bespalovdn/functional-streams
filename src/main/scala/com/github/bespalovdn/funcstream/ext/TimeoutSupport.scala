@@ -15,7 +15,7 @@ trait TimeoutSupport extends FutureExtensions
         else {
             val p = Promise[A]
             val task = new TimerTask {
-                override def run(): Unit = p.failure(new TimeoutException())
+                override def run(): Unit = p.failure(new TimeoutException(timeout.toString))
             }
             TimeoutSupport.timer.schedule(task, timeout.toMillis)
 
