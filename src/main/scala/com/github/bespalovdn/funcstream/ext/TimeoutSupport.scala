@@ -5,6 +5,7 @@ import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit, Time
 
 import com.github.bespalovdn.funcstream.FutureExtensions
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}
 
@@ -19,8 +20,6 @@ trait TimeoutSupport extends FutureExtensions
             }
             val timeoutFuture = TimeoutSupport.scheduledExecutor.schedule(task, timeout.toMillis, TimeUnit.MILLISECONDS)
             fn.onComplete(_ => timeoutFuture.cancel(false))
-
-            import scala.concurrent.ExecutionContext.Implicits.global
             fn <|> p.future
         }
     }
