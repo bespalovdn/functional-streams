@@ -1,7 +1,7 @@
 package com.github.bespalovdn.funcstream.ext
 
 import java.util.TimerTask
-import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit, TimeoutException}
+import java.util.concurrent._
 
 import com.github.bespalovdn.funcstream.FutureExtensions
 
@@ -39,5 +39,13 @@ trait TimeoutSupport extends FutureExtensions
 
 object TimeoutSupport
 {
-    private val scheduledExecutor: ScheduledExecutorService = Executors.newScheduledThreadPool(1)
+    private val scheduledExecutor: ScheduledExecutorService = Executors.newScheduledThreadPool(1, newThreadFactory())
+
+    private def newThreadFactory() = new ThreadFactory () {
+        override def newThread(r: Runnable): Thread = {
+            val t = Executors.defaultThreadFactory().newThread(r)
+            t.setDaemon(true)
+            t
+        }
+    }
 }
