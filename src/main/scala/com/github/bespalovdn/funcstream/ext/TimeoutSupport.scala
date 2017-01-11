@@ -1,7 +1,7 @@
 package com.github.bespalovdn.funcstream.ext
 
-import java.util.concurrent.TimeoutException
-import java.util.{Timer, TimerTask}
+import java.util.TimerTask
+import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit, TimeoutException}
 
 import com.github.bespalovdn.funcstream.FutureExtensions
 
@@ -14,10 +14,11 @@ trait TimeoutSupport extends FutureExtensions
         if(timeout == null) fn
         else {
             val p = Promise[A]
-            val task = new TimerTask {
+            val task = new Runnable {
                 override def run(): Unit = p.failure(new TimeoutException(timeout.toString))
             }
-            TimeoutSupport.timer.schedule(task, timeout.toMillis)
+            val timeoutFuture = TimeoutSupport.scheduledExecutor.schedule(task, timeout.toMillis, TimeUnit.MILLISECONDS)
+            fn.onComplete(_ => timeoutFuture.cancel(false))
 
             import scala.concurrent.ExecutionContext.Implicits.global
             fn <|> p.future
@@ -31,7 +32,7 @@ trait TimeoutSupport extends FutureExtensions
             val task = new TimerTask {
                 override def run(): Unit = p.success(())
             }
-            TimeoutSupport.timer.schedule(task, timeout.toMillis)
+            TimeoutSupport.scheduledExecutor.schedule(task, timeout.toMillis, TimeUnit.MILLISECONDS)
             p.future
         }
     }
@@ -39,5 +40,5 @@ trait TimeoutSupport extends FutureExtensions
 
 object TimeoutSupport
 {
-    private val timer = new Timer(true)
+    private val scheduledExecutor: ScheduledExecutorService = Executors.newScheduledThreadPool(1)
 }
