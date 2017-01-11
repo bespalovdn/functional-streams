@@ -19,8 +19,7 @@ trait TimeoutSupport extends FutureExtensions
             }
             TimeoutSupport.timer.schedule(task, timeout.toMillis)
 
-            implicit def ec = scala.concurrent.ExecutionContext.global
-
+            import scala.concurrent.ExecutionContext.Implicits.global
             fn <|> p.future
         }
     }
