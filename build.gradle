@@ -3,7 +3,7 @@ apply plugin: 'maven'
 apply plugin: 'signing'
 
 group = "com.github.bespalovdn"
-archivesBaseName = "functional-streams"
+archivesBaseName = "functional-streams_2.12"
 version = '1.0.5-SNAPSHOT'
 
 compileScala {
