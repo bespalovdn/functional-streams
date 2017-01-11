@@ -27,7 +27,7 @@ class FunctionalStreamsTest extends FlatSpec
         }
 
         val consumer: FPlainConsumer[Int, Int, Unit] = FConsumer { implicit stream => for {
-                _ <- stream.read(timeout = 10.millisecond)
+                _ <- stream.read(timeout = 100.millisecond)
             } yield consume()
         }
 
@@ -35,7 +35,7 @@ class FunctionalStreamsTest extends FlatSpec
         // check if it's not complete instantly:
         result.value should be (None)
         // wait for a while (more than timeout in consumer) and check if result completed with TimeoutException:
-        Thread.sleep(100)
+        Thread.sleep(200)
         inside (result.value) {
             case Some(Failure(t: Throwable)) => t shouldBe a [TimeoutException]
         }
