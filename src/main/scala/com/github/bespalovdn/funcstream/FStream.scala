@@ -14,6 +14,19 @@ trait FStream[A, B]
     def read(timeout: Duration = null): Future[A]
     def write(elem: B): Future[Unit]
 
+    //TODO: think about forking for <=> FPipe
+    // example:
+//    private val stream: FStream[VC2SFUResponseMsg, VC2SFURequestMsg] = {
+//        val stream = new WebSocketClientStream(endpoint)
+//        // fork Ping/Pong handler:
+//        stream <=> SfuClientProtocol.listenRead[WebSocketFrame, WebSocketFrame](m => logger.info("PingPong MSG: " + m)) <=>
+//            SfuClientProtocol.filter[WebSocketFrame, WebSocketFrame](SfuClientProtocol.isPingPongFrame) <=>
+//            SfuClientProtocol.pingPong
+//        // return stream after WebSocketFrame <=> VC2SFU converter:
+//        stream <=> SfuClientProtocol.listenRead[WebSocketFrame, WebSocketFrame](m => logger.info("REST MSG: " + m)) <=>
+//            SfuClientProtocol.filterNot[WebSocketFrame, WebSocketFrame](SfuClientProtocol.isPingPongFrame) <=>
+//            SfuClientProtocol.convertFrame
+//    }
     def <=> [C, D](p: FPipe[A, B, C, D]): FStream[C, D] = p.apply(this)
     def <=> [C, D, X](c: FConsumer[A, B, C, D, X]): Future[X] = {
         val downStream = fork()
