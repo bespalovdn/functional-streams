@@ -14,10 +14,10 @@ trait FStream[A, B]
     def read(timeout: Duration = null): Future[A]
     def write(elem: B): Future[Unit]
 
-    def <=> [C, D](pipe: FPipe[A, B, C, D]): FStream[C, D] = {
-        val downStream = fork()
-
-    }
+//    def <=> [C, D](pipe: FPipe[A, B, C, D]): FStream[C, D] = {
+//        val downStream = fork()
+//
+//    }
 
     def <=> [C, D, X](c: FConsumer[A, B, C, D, X]): Future[X] = {
         val completion = Promise[Unit]
