@@ -3,8 +3,6 @@ package com.github.bespalovdn.funcstream.ext
 import java.util.TimerTask
 import java.util.concurrent._
 
-import com.github.bespalovdn.funcstream.FutureExtensions
-
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}

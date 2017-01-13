@@ -18,7 +18,7 @@ trait FConsumer[A, B, C, D, X] extends (FStream[A, B] => Future[(FStream[C, D], 
 
     def flatMap[E, F, Y](fn: X => FConsumer[C, D, E, F, Y])(implicit ec: ExecutionContext): FConsumer[A, B, E, F, Y] =
     FConsumer { (sAB: FStream[A, B]) => {
-            import FutureExtensions._
+            import com.github.bespalovdn.funcstream.ext.FutureExtensions._
             this.apply(sAB) >>= {
                 case (sCD, x) =>
                     val cY: FConsumer[C, D, E, F, Y] = fn(x)
@@ -36,6 +36,7 @@ object FConsumer
         }
     }
 
+    //TODO: move to FStream
     def pipe[A, B, C, D](pipe: FPipe[A, B, C, D]): FConsumer[A, B, C, D, Unit] = {
         new FConsumer[A, B, C, D, Unit] {
             override def apply(upStream: FStream[A, B]): Future[(FStream[C, D], Unit)] = {

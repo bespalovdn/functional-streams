@@ -1,40 +1,49 @@
 package com.github.bespalovdn.funcstream
 
+import java.io.Closeable
 import java.util.concurrent.ConcurrentLinkedQueue
-
-import com.github.bespalovdn.funcstream.ext.{ClosableStream, ClosableStreamImpl}
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 import scala.concurrent.duration.Duration
+import scala.concurrent.{Future, Promise}
 
 trait FStream[A, B]
 {
     def read(timeout: Duration = null): Future[A]
     def write(elem: B): Future[Unit]
 
+//    def <=> [C, D](pipe: FPipe[A, B, C, D]): FStream[C, D] = {
+//        val downStream = fork()
+//
+//    }
+
     def <=> [C, D, X](c: FConsumer[A, B, C, D, X]): Future[X] = {
-        val downStream = fork()
+        val completion = Promise[Unit]
+        val downStream = fork(completion.future)
         val f = c.apply(downStream).map(_._2)
-        f.onComplete(_ => downStream.close())
+        f.onComplete(_ => completion.success(()))
         f
     }
 
     private val readQueues = ListBuffer.empty[ConcurrentLinkedQueue[Future[A]]]
+
     private def upStream = this
-    private def fork(): ClosableStream[A, B] = new DownStream
 
-    private class DownStream extends ClosableStreamImpl[A, B]{
-        import scala.concurrent.ExecutionContext.Implicits.global
+    private def fork(completion: Future[_]): FStream[A, B] = {
+        val stream = new DownStream
+        completion.onComplete(_ => stream.close())
+        stream
+    }
 
-        val readQueue = new ConcurrentLinkedQueue[Future[A]]()
+    private class DownStream extends FStream[A, B] with Closeable{
+
+        private val readQueue = new ConcurrentLinkedQueue[Future[A]]()
 
         readQueues.synchronized{ readQueues += readQueue }
-        closed.onComplete{_ => readQueues.synchronized{ readQueues -= readQueue }}
 
-        override def write(elem: B): Future[Unit] = checkClosed{ upStream.synchronized{ upStream.write(elem) } }
-        override def read(timeout: Duration): Future[A] = checkClosed{
+        override def write(elem: B): Future[Unit] = upStream.synchronized{ upStream.write(elem) }
+        override def read(timeout: Duration): Future[A] = {
             readQueue.poll() match {
                 case null =>
                     val f = upStream.synchronized(upStream.read(timeout))
@@ -43,6 +52,10 @@ trait FStream[A, B]
                 case elem =>
                     elem
             }
+        }
+
+        override def close(): Unit = {
+            readQueues.synchronized{ readQueues -= readQueue }
         }
     }
 }
