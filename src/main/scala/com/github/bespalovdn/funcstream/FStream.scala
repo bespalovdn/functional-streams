@@ -11,6 +11,25 @@ trait FStream[A, B]
 {
     def read(timeout: Duration = null): Future[A]
     def write(elem: B): Future[Unit]
+}
+
+
+trait Subscription[A, B]
+{
+    def subscribe(consumer: Consumer[A, B, _]): FStream[A, B] = ???
+    def unsubscribe(consumer: Consumer[A, B, _]): Unit = ???
+}
+
+
+
+
+
+private [funcstream] class FStreamController[A, B](upStream: FStream[A, B]) extends FStream[A, B]
+{
+    override def read(timeout: Duration): Future[A] = ???
+
+    override def write(elem: B): Future[Unit] = upStream.synchronized{ upStream.write(elem) }
+
 
     def <=> [C, D](pipe: FPipe[A, B, C, D]): FStream[C, D] = {
         val downStream = fork()
