@@ -36,6 +36,15 @@ object FConsumer
         }
     }
 
+    def pipe[A, B, C, D](pipe: FPipe[A, B, C, D]): FConsumer[A, B, C, D, Unit] = {
+        new FConsumer[A, B, C, D, Unit] {
+            override def apply(upStream: FStream[A, B]): Future[(FStream[C, D], Unit)] = {
+                val downStream: FStream[C, D] = pipe.apply(upStream)
+                success(consume()(downStream))
+            }
+        }
+    }
+
     def fork[A, B, C, D, Y](cY: FConsumer[A, B, C, D, Y])
                            (implicit ec: ExecutionContext): FConsumer[A, B, A, B, Future[Y]] = FConsumer { implicit stream => {
             val fY = stream <=> cY
