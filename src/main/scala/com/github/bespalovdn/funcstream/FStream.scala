@@ -52,7 +52,7 @@ trait FStream[A, B]
             readQueue.poll() match {
                 case null =>
                     val f = upStream.synchronized(upStream.read(timeout))
-                    readQueues.foreach(_ offer f)
+                    readQueues.synchronized{ readQueues.foreach(_ offer f) }
                     readQueue.poll()
                 case elem =>
                     elem
