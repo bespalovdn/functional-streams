@@ -78,4 +78,6 @@ class FunctionalStreamsTest extends FlatSpec
             }
         }
     }
+
+    //TODO: add more tests with stream forking (consumer + pipe)
 }

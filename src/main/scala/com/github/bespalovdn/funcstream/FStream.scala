@@ -22,48 +22,54 @@ trait FStream[A, B]
         c.apply(downStream).map(_._2)
     }
 
+    private[funcstream] def fork(): FStream[A, B] = new DownStream(this)
+
     private val downReadQueues = mutable.ListBuffer.empty[mutable.Queue[Future[A]]]
+}
 
-    private def upStream = this
+private[funcstream] class DownStream[A, B](upStream: FStream[A, B]) extends FStream[A, B] {
+    private val readQueue = new mutable.Queue[Future[A]]()
+    private val subscribersCount = new AtomicInteger(0)
 
-    private def fork(): FStream[A, B] = new DownStream
+    override def write(elem: B): Future[Unit] = {
+        upStream.synchronized{ upStream.write(elem) }
+    }
 
-    private class DownStream extends FStream[A, B] {
-        private val readQueue = new mutable.Queue[Future[A]]()
-        private val subscribersCount = new AtomicInteger(0)
-
-        override def write(elem: B): Future[Unit] = {
-            upStream.synchronized{ upStream.write(elem) }
+    override def read(timeout: Duration): Future[A] = {
+        if(readQueue.isEmpty){
+            val f = upStream.synchronized(upStream.read(timeout))
+            downReadQueues.synchronized{ downReadQueues.foreach(_.enqueue(f)) }
+            readQueue.dequeue()
+        } else {
+            readQueue.dequeue()
         }
+    }
 
-        override def read(timeout: Duration): Future[A] = {
-            if(readQueue.isEmpty){
-                val f = upStream.synchronized(upStream.read(timeout))
-                downReadQueues.synchronized{ downReadQueues.foreach(_.enqueue(f)) }
-                readQueue.dequeue()
-            } else {
-                readQueue.dequeue()
-            }
-        }
+    override def <=> [C, D, X](c: FConsumer[A, B, C, D, X]): Future[X] = {
+        subscribe()
+        val downStream = fork()
+        val f = c.apply(downStream).map(_._2)
+        f.onComplete(_ => unsubscribe())
+        f
+    }
 
-        def subscribe(): Unit = subscribersCount.synchronized{
-            if(subscribersCount.incrementAndGet() > 0) {
-                downReadQueues.synchronized {downReadQueues += readQueue}
-            }
+    def subscribe(): Unit = subscribersCount.synchronized{
+        if(subscribersCount.incrementAndGet() > 0) {
+            downReadQueues.synchronized {downReadQueues += readQueue}
         }
+    }
 
-        def unsubscribe(): Unit = subscribersCount.synchronized{
-            if(subscribersCount.decrementAndGet() == 0) {
-                downReadQueues.synchronized {downReadQueues -= readQueue}
-                readQueue.clear()
-            }
+    def unsubscribe(): Unit = subscribersCount.synchronized{
+        if(subscribersCount.decrementAndGet() == 0) {
+            downReadQueues.synchronized {downReadQueues -= readQueue}
+            readQueue.clear()
         }
+    }
 
-        override def <=>[C, D, X](c: FConsumer[A, B, C, D, X]): Future[X] = {
-            subscribe()
-            val f = super.<=>(c)
-            f.onComplete(_ => unsubscribe())
-            f
-        }
+    override def <=>[C, D, X](c: FConsumer[A, B, C, D, X]): Future[X] = {
+        subscribe()
+        val f = super.<=>(c)
+        f.onComplete(_ => unsubscribe())
+        f
     }
 }
