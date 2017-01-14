@@ -142,9 +142,7 @@ object Consumer
 ////////////////////////////////////////////////////////////////
 object StdInTest
 {
-    import scala.concurrent.ExecutionContext.Implicits.global
-
-    class stdReader extends Publisher[String]
+    class StdReader extends Publisher[String]
     {
         private val subscribers = mutable.ListBuffer.empty[Subscriber[String]]
 
@@ -161,7 +159,9 @@ object StdInTest
     }
 
     def apply(): Unit = {
-        val producer: Producer[String] = Producer(new stdReader)
+        import scala.concurrent.ExecutionContext.Implicits.global
+
+        val producer: Producer[String] = Producer(new StdReader)
         val toInt: String => Int = _.toInt // transformer
         val even: Int => Boolean = i => i % 2 == 0 // filter
         val consumer: Consumer[Int, Int] = Consumer{
@@ -174,5 +174,46 @@ object StdInTest
         println("Input some numbers:")
         val result: Future[Int] = producer.transform(toInt).filter(even) <=> consumer
         println("SUM OF EVENS IS: " + Await.result(result, Duration.Inf))
+    }
+}
+
+object MonotonicallyIncreasePublisherTest
+{
+    class Mono extends Publisher[String]
+    {
+        private val subscribers = mutable.ListBuffer.empty[Subscriber[String]]
+
+        override def subscribe(subscriber: Subscriber[String]): Unit = subscribers += subscriber
+        override def unsubscribe(subscriber: Subscriber[String]): Unit = subscribers -= subscriber
+
+        private val executorContext = ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
+        Future {
+            var nextNumber = 1
+            while(true){
+                val line = nextNumber.toString
+                subscribers.foreach(_.push(line))
+                nextNumber += 1
+                Thread.sleep(1000)
+            }
+        }(executorContext)
+    }
+
+    def apply(): Unit ={
+        import scala.concurrent.ExecutionContext.Implicits.global
+
+        val producer: Producer[String] = Producer(new Mono)
+
+        def consumer(name: String): Consumer[String, Unit] = Consumer{
+            p => p.get() >>= {
+                case str =>
+                    println(s"$name: $str")
+                    consumer(name).apply(p)
+            }
+        }
+
+        println("Producer's output:")
+        val result: Future[Unit] = producer <=> consumer("A")
+        Await.ready(result, Duration.Inf)
+        println("DONE")
     }
 }
