@@ -203,16 +203,22 @@ object MonotonicallyIncreasePublisherTest
 
         val producer: Producer[String] = Producer(new Mono)
 
-        def consumer(name: String): Consumer[String, Unit] = Consumer{
-            p => p.get() >>= {
-                case str =>
-                    println(s"$name: $str")
-                    consumer(name).apply(p)
+        def consumer(name: String, nTimes: Int): Consumer[String, Unit] = Consumer{
+            p => {
+                if(nTimes > 0) {
+                    p.get() >>= {
+                        case str =>
+                            println(s"$name: $str")
+                            consumer(name, nTimes - 1).apply(p)
+                    }
+                } else {
+                    Future.successful(())
+                }
             }
         }
 
         println("Producer's output:")
-        val result: Future[Unit] = producer.fork(p => p <=> consumer("B")) <=> consumer("A")
+        val result: Future[Unit] = producer.fork(p => p <=> (consumer("B", 3) >> consumer("C", 3))) <=> consumer("A", 10)
         Await.ready(result, Duration.Inf)
         println("DONE")
     }
