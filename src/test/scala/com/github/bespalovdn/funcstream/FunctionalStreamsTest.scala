@@ -43,10 +43,10 @@ class FunctionalStreamsTest extends FlatSpec
 
     it should "check if piping functionality works" in {
         val endpoint = new FStream[Int, Int] {
-            var lastWrite: Int = 0
-            override def read(timeout: Duration): Future[Int] = success(1)
+            var lastWrittenElem: Int = 0
+            override def read(timeout: Duration): Future[Int] = success(lastWrittenElem)
             override def write(elem: Int): Future[Unit] = {
-                lastWrite = elem
+                lastWrittenElem = elem
                 success()
             }
         }
@@ -56,11 +56,11 @@ class FunctionalStreamsTest extends FlatSpec
         }}
         val consumer: FPlainConsumer[Int, Int, Unit] = FConsumer{ implicit stream => for {
                 i <- stream.read()
-                _ <- {i should be (2); success()}
+                _ <- {i should be (0); success()}
                 _ <- stream.write(1)
-                _ <- {endpoint.lastWrite should be (2); success()}
+                _ <- {endpoint.lastWrittenElem should be (2); success()}
                 i <- stream.read()
-                _ <- {i should be (2); success()}
+                _ <- {i should be (4); success()}
             } yield consume()
         }
         FStreamConnector(endpoint) <=> twice <=> consumer
