@@ -218,8 +218,12 @@ object MonotonicallyIncreasePublisherTest
         }
 
         println("Producer's output:")
-        val result: Future[Unit] = producer.fork(p => p <=> (consumer("B", 3) >> consumer("C", 3))) <=> consumer("A", 10)
+        var result: Future[Unit] = producer.fork(p => p <=> (consumer("B", 3) >> consumer("C", 3))) <=> consumer("A", 10)
         Await.ready(result, Duration.Inf)
+        Thread.sleep(3000)
+        result = producer.fork(p => p <=> (consumer("B", 3) >> consumer("C", 3))) <=> consumer("A", 10)
+        Await.ready(result, Duration.Inf)
+
         println("DONE")
     }
 }
