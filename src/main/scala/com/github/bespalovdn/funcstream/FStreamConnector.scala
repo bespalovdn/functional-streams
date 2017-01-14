@@ -36,8 +36,15 @@ private [funcstream] class FStreamController[A, B](upStream: FStream[A, B])
     override def write(elem: B): Future[Unit] = synchronized{ upStream.write(elem) }
 
     override def <=> [C, D](pipe: FPipe[A, B, C, D]): FStream[C, D] with FStreamConnector[C, D] = {
-        val downStream = pipe.apply(fork())
-        new FStreamController(downStream)
+        val downStream = fork()
+        val piped: FStream[C, D] = pipe.apply(downStream)
+        val pipedSubscription = new FStream[C, D] with Subscription {
+            override def read(timeout: Duration): Future[C] = piped.read(timeout)
+            override def write(elem: D): Future[Unit] = piped.write(elem)
+            override def subscribe(): Unit = downStream.subscribe()
+            override def unsubscribe(): Unit = downStream.unsubscribe()
+        }
+        new FStreamController(pipedSubscription)
     }
 
     override def <=> [C, D, X](c: FConsumer[A, B, C, D, X]): Future[X] = {
@@ -45,15 +52,33 @@ private [funcstream] class FStreamController[A, B](upStream: FStream[A, B])
         downStream <=> c
     }
 
-    def subscribe(downQueue: mutable.Queue[Future[A]]): Unit = downReadQueues.synchronized{ downReadQueues += downQueue }
-    def unsubscribe(downQueue: mutable.Queue[Future[A]]): Unit = downReadQueues.synchronized{ downReadQueues -= downQueue }
+    def subscribe(downQueue: mutable.Queue[Future[A]]): Unit = {
+        downReadQueues.synchronized{ downReadQueues += downQueue }
+        upStream match {
+            case subscription: Subscription => subscription.subscribe()
+            case _ =>
+        }
+    }
+    def unsubscribe(downQueue: mutable.Queue[Future[A]]): Unit = {
+        downReadQueues.synchronized{ downReadQueues -= downQueue }
+        upStream match {
+            case subscription: Subscription => subscription.unsubscribe()
+            case _ =>
+        }
+    }
 
     private def fork(): DownStream[A, B] = new DownStream(this)
 }
 
+trait Subscription{
+    def subscribe(): Unit
+    def unsubscribe(): Unit
+}
+
 private[funcstream] class DownStream[A, B](controller: FStreamController[A, B])
     extends FStream[A, B]
-        with FStreamConnector[A, B]
+    with FStreamConnector[A, B]
+    with Subscription
 {
     private val readQueue = new mutable.Queue[Future[A]]()
     private val subscribersCount = new AtomicInteger(0)
@@ -80,13 +105,13 @@ private[funcstream] class DownStream[A, B](controller: FStreamController[A, B])
         controller <=> pipe
     }
 
-    private def subscribe(): Unit = subscribersCount.synchronized{
+    override def subscribe(): Unit = subscribersCount.synchronized{
         if(subscribersCount.getAndIncrement() == 0) {
             controller.subscribe(readQueue)
         }
     }
 
-    private def unsubscribe(): Unit = subscribersCount.synchronized{
+    override def unsubscribe(): Unit = subscribersCount.synchronized{
         if(subscribersCount.decrementAndGet() == 0) {
             controller.unsubscribe(readQueue)
             readQueue.synchronized(readQueue.clear())
