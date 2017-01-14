@@ -24,6 +24,8 @@ trait Producer[A] {
     def get(timeout: Duration = null): Future[A]
     def <=> [B](c: Consumer[A, B])(implicit ec: ExecutionContext): Future[B]
     def transform [B](fn: A => B): Producer[B]
+    def filter(fn: A => Boolean): Producer[A]
+    def fork(filter: A => Boolean): Producer[A]
 }
 
 object Producer
@@ -62,7 +64,7 @@ object Producer
         }
 
         override def transform [B](fn: A => B): Producer[B] = {
-            val publisherProxy = new Publisher[B] with Subscriber[A]{
+            val proxy = new Publisher[B] with Subscriber[A]{
                 private val subscribers = mutable.ListBuffer.empty[Subscriber[B]]
                 override def subscribe(subscriber: Subscriber[B]): Unit = {
                     if(subscribers.isEmpty){
@@ -85,10 +87,32 @@ object Producer
                     }
                 }
             }
-            new ProducerImpl[B](publisherProxy)
+            new ProducerImpl[B](proxy)
         }
 
-        def filter(fn: A => Boolean): Producer[A] = ???
+        override def filter(fn: A => Boolean): Producer[A] = {
+            val proxy = new Publisher[A] with Subscriber[A]{
+                private val subscribers = mutable.ListBuffer.empty[Subscriber[A]]
+                override def subscribe(subscriber: Subscriber[A]): Unit = {
+                    if(subscribers.isEmpty){
+                        publisher.subscribe(this)
+                    }
+                    subscribers += subscriber
+                }
+                override def unsubscribe(subscriber: Subscriber[A]): Unit = {
+                    subscribers -= subscriber
+                    if(subscribers.isEmpty){
+                        publisher.unsubscribe(this)
+                    }
+                }
+                override def push(elem: A): Unit = if(fn(elem)){
+                    subscribers.foreach(_.push(elem))
+                }
+            }
+            new ProducerImpl[A](proxy)
+        }
+
+        override def fork(filter: (A) => Boolean): Producer[A] = ???
     }
 }
 
