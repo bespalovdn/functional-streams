@@ -1,9 +1,13 @@
 package com.github.bespalovdn.funcstream.v2
 
+import java.util.concurrent.Executors
+
 import com.github.bespalovdn.funcstream.ext.FutureExtensions._
 
+import scala.collection.mutable
 import scala.concurrent.duration.Duration
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{Await, ExecutionContext, Future, Promise}
+import scala.io.StdIn
 
 trait Publisher[A]{
     def subscribe(subscriber: Subscriber[A])
@@ -15,8 +19,27 @@ trait Subscriber[A]{
 }
 
 ////////////////////////////////////////////////////////////////
-trait Producer[A]{
-    def get(timeout: Duration = null): Future[A]
+class Producer[A](publisher: Publisher[A]) extends Subscriber[A]
+{
+    val available = mutable.Queue.empty[A]
+    val requested = mutable.Queue.empty[Promise[A]]
+
+    override def push(elem: A): Unit = {
+        if(requested.nonEmpty)
+            requested.dequeue().trySuccess(elem)
+        else
+            available.enqueue(elem)
+    }
+
+    def get(timeout: Duration = null): Future[A] = {
+        if(available.nonEmpty) {
+            Future.successful(available.dequeue())
+        } else{
+            val p = Promise[A]
+            requested.enqueue(p)
+            p.future
+        }
+    }
 
     def <=> [B](c: Consumer[A, B]): Future[B] = c.apply(this)
     def <=> [B](t: Transformer[A, B]): Producer[B] = t.apply(this)
@@ -40,5 +63,33 @@ object Consumer
 ////////////////////////////////////////////////////////////////
 object StdInTest
 {
+    import scala.concurrent.ExecutionContext.Implicits.global
 
+    object stdReader extends Publisher[String]
+    {
+        val subscribers = mutable.ListBuffer.empty[Subscriber[String]]
+
+        override def subscribe(subscriber: Subscriber[String]): Unit = subscribers += subscriber
+        override def unsubscribe(subscriber: Subscriber[String]): Unit = subscribers -= subscriber
+
+        val executorContext = ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
+
+        Future {
+            while(true){
+                val line = StdIn.readLine()
+                subscribers.foreach(_.push(line))
+            }
+        }(executorContext)
+    }
+
+    val producer: Producer[String] = new Producer(stdReader)
+    val consumer: Consumer[String, Int] = Consumer{
+        p => for {
+            a <- p.get().map(_.toInt)
+            b <- p.get().map(_.toInt)
+        } yield a + b
+    }
+
+    val result: Future[Int] = producer <=> consumer
+    println("RESULT IS: " + Await.result(result, Duration.Inf))
 }
