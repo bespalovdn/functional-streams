@@ -41,7 +41,12 @@ class Producer[A](publisher: Publisher[A]) extends Subscriber[A]
         }
     }
 
-    def <=> [B](c: Consumer[A, B]): Future[B] = c.apply(this)
+    def <=> [B](c: Consumer[A, B])(implicit ec: ExecutionContext): Future[B] = {
+        publisher.subscribe(this)
+        val f = c.apply(this)
+        f.onComplete(_ => publisher.unsubscribe(this))
+        f
+    }
     def <=> [B](t: Transformer[A, B]): Producer[B] = t.apply(this)
 }
 
@@ -65,7 +70,7 @@ object StdInTest
 {
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    object stdReader extends Publisher[String]
+    class stdReader extends Publisher[String]
     {
         val subscribers = mutable.ListBuffer.empty[Subscriber[String]]
 
@@ -82,14 +87,17 @@ object StdInTest
         }(executorContext)
     }
 
-    val producer: Producer[String] = new Producer(stdReader)
-    val consumer: Consumer[String, Int] = Consumer{
-        p => for {
-            a <- p.get().map(_.toInt)
-            b <- p.get().map(_.toInt)
-        } yield a + b
-    }
+    def apply(): Unit = {
+        val producer: Producer[String] = new Producer(new stdReader)
+        val consumer: Consumer[String, Int] = Consumer{
+            p => for {
+                a <- p.get().map(_.toInt)
+                b <- p.get().map(_.toInt)
+            } yield a + b
+        }
 
-    val result: Future[Int] = producer <=> consumer
-    println("RESULT IS: " + Await.result(result, Duration.Inf))
+        println("Input some numbers:")
+        val result: Future[Int] = producer <=> consumer
+        println("SUM IS: " + Await.result(result, Duration.Inf))
+    }
 }
