@@ -38,7 +38,7 @@ object FConsumer
 
     def fork[A, B, C, D, Y](cY: FConsumer[A, B, C, D, Y])
                            (implicit ec: ExecutionContext): FConsumer[A, B, A, B, Future[Y]] = FConsumer { implicit stream => {
-            val fY = stream <=> cY
+            val fY = stream.asInstanceOf[FStreamConnector[A, B]] <=> cY
             success(consume(fY))
         }
     }

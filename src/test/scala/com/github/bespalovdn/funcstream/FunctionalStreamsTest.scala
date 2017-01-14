@@ -31,7 +31,7 @@ class FunctionalStreamsTest extends FlatSpec
             } yield consume()
         }
 
-        val result: Future[Unit] = endpoint <=> consumer
+        val result: Future[Unit] = FStreamConnector(endpoint) <=> consumer
         // check if it's not complete instantly:
         result.value should be (None)
         // wait for a while (more than timeout in consumer) and check if result completed with TimeoutException:
@@ -68,7 +68,7 @@ class FunctionalStreamsTest extends FlatSpec
             success(consume())
         }
 
-        endpoint <=> {
+        FStreamConnector(endpoint) <=> {
             check{
                 endpoint.readCount should be (0)
             } >> echoServer >> check {

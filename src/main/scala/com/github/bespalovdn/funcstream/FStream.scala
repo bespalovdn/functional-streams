@@ -19,6 +19,14 @@ trait FStreamConnector[A, B]
     def <=> [C, D](pipe: FPipe[A, B, C, D]): FStream[C, D] with FStreamConnector[C, D]
 }
 
+object FStreamConnector
+{
+    def apply[A, B](stream: FStream[A, B]): FStreamConnector[A, B] = stream match {
+        case stream: FStreamConnector[A@unchecked, B@unchecked] => stream
+        case _ => new FStreamController(stream)
+    }
+}
+
 private [funcstream] class FStreamController[A, B](upStream: FStream[A, B])
     extends FStream[A, B]
     with FStreamConnector[A, B]
