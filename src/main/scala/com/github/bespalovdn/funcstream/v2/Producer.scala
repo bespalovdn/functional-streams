@@ -25,7 +25,7 @@ trait Producer[A] {
     def <=> [B](c: Consumer[A, B])(implicit ec: ExecutionContext): Future[B]
     def transform [B](fn: A => B): Producer[B]
     def filter(fn: A => Boolean): Producer[A]
-    def fork(filter: A => Boolean): Producer[A]
+    def fork(consumer: Producer[A] => Unit): Producer[A]
 }
 
 object Producer
@@ -91,28 +91,37 @@ object Producer
         }
 
         override def filter(fn: A => Boolean): Producer[A] = {
-            val proxy = new Publisher[A] with Subscriber[A]{
-                private val subscribers = mutable.ListBuffer.empty[Subscriber[A]]
-                override def subscribe(subscriber: Subscriber[A]): Unit = {
-                    if(subscribers.isEmpty){
-                        publisher.subscribe(this)
-                    }
-                    subscribers += subscriber
-                }
-                override def unsubscribe(subscriber: Subscriber[A]): Unit = {
-                    subscribers -= subscriber
-                    if(subscribers.isEmpty){
-                        publisher.unsubscribe(this)
-                    }
-                }
+            val proxy = new Proxy{
                 override def push(elem: A): Unit = if(fn(elem)){
-                    subscribers.foreach(_.push(elem))
+                    super.push(elem)
                 }
             }
             new ProducerImpl[A](proxy)
         }
 
-        override def fork(filter: (A) => Boolean): Producer[A] = ???
+        override def fork(consumer: Producer[A] => Unit): Producer[A] = {
+            val p1 = new ProducerImpl[A](new Proxy)
+            val p2 = new ProducerImpl[A](new Proxy)
+            consumer(p1)
+            p2
+        }
+
+        private class Proxy extends Publisher[A] with Subscriber[A]{
+            private val subscribers = mutable.ListBuffer.empty[Subscriber[A]]
+            override def subscribe(subscriber: Subscriber[A]): Unit = {
+                if(subscribers.isEmpty){
+                    publisher.subscribe(this)
+                }
+                subscribers += subscriber
+            }
+            override def unsubscribe(subscriber: Subscriber[A]): Unit = {
+                subscribers -= subscriber
+                if(subscribers.isEmpty){
+                    publisher.unsubscribe(this)
+                }
+            }
+            override def push(elem: A): Unit = subscribers.foreach(_.push(elem))
+        }
     }
 }
 
