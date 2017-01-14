@@ -19,44 +19,55 @@ trait Subscriber[A]{
 }
 
 ////////////////////////////////////////////////////////////////
-class Producer[A](publisher: Publisher[A]) extends Subscriber[A]
-{
-    val available = mutable.Queue.empty[A]
-    val requested = mutable.Queue.empty[Promise[A]]
-
-    override def push(elem: A): Unit = {
-        if(requested.nonEmpty)
-            requested.dequeue().trySuccess(elem)
-        else
-            available.enqueue(elem)
-    }
-
-    def get(timeout: Duration = null): Future[A] = {
-        if(available.nonEmpty) {
-            Future.successful(available.dequeue())
-        } else{
-            val p = Promise[A]
-            requested.enqueue(p)
-            p.future
-        }
-    }
-
-    def <=> [B](c: Consumer[A, B])(implicit ec: ExecutionContext): Future[B] = {
-        publisher.subscribe(this)
-        val f = c.apply(this)
-        f.onComplete(_ => publisher.unsubscribe(this))
-        f
-    }
-    def <=> [B](t: Transformer[A, B]): Producer[B] = t.apply(this)
+trait Producer[A] {
+    def get(timeout: Duration = null): Future[A]
 }
+
+object Producer
+{
+    def apply[A](publisher: Publisher[A]): Producer[A] = new ProducerImpl[A](publisher)
+
+    private class ProducerImpl[A](publisher: Publisher[A]) extends Producer[A] with Subscriber[A]
+    {
+        private val available = mutable.Queue.empty[A]
+        private val requested = mutable.Queue.empty[Promise[A]]
+
+        override def push(elem: A): Unit = {
+            if(requested.nonEmpty)
+                requested.dequeue().trySuccess(elem)
+            else
+                available.enqueue(elem)
+        }
+
+        override def get(timeout: Duration = null): Future[A] = {
+            if(available.nonEmpty) {
+                Future.successful(available.dequeue())
+            } else{
+                val p = Promise[A]
+                requested.enqueue(p)
+                p.future
+            }
+        }
+
+        def <=> [B](c: Consumer[A, B])(implicit ec: ExecutionContext): Future[B] = {
+            publisher.subscribe(this)
+            val f = c.apply(this)
+            f.onComplete(_ => publisher.unsubscribe(this))
+            f
+        }
+
+        def transform [B](fn: A => B): Producer[B] = ???
+
+        def filter(fn: A => Boolean): Producer[A] = ???
+    }
+}
+
 
 trait Consumer[A, B] extends (Producer[A] => Future[B]) {
     def >> [C](cC: => Consumer[A, C])(implicit ec: ExecutionContext): Consumer[A, C] = Consumer {
         p => {this.apply(p) >> cC.apply(p)}
     }
 }
-
-trait Transformer[A, B] extends (Producer[A] => Producer[B])
 
 object Consumer
 {
@@ -88,11 +99,12 @@ object StdInTest
     }
 
     def apply(): Unit = {
-        val producer: Producer[String] = new Producer(new stdReader)
-        val consumer: Consumer[String, Int] = Consumer{
+        val producer: Producer[String] = Producer(new stdReader)
+        val transformer: Transformer[String, Int] =
+        val consumer: Consumer[Int, Int] = Consumer{
             p => for {
-                a <- p.get().map(_.toInt)
-                b <- p.get().map(_.toInt)
+                a <- p.get()
+                b <- p.get()
             } yield a + b
         }
 
