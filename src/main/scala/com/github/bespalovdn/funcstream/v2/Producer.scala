@@ -25,7 +25,7 @@ trait Producer[A] {
     def <=> [B](c: Consumer[A, B])(implicit ec: ExecutionContext): Future[B]
     def transform [B](fn: A => B): Producer[B]
     def filter(fn: A => Boolean): Producer[A]
-    def fork(consumer: Producer[A] => Unit): Producer[A]
+    def fork(consumer: Producer[A] => _): Producer[A]
 }
 
 object Producer
@@ -99,7 +99,7 @@ object Producer
             new ProducerImpl[A](proxy)
         }
 
-        override def fork(consumer: Producer[A] => Unit): Producer[A] = {
+        override def fork(consumer: Producer[A] => _): Producer[A] = {
             val p1 = new ProducerImpl[A](new Proxy)
             val p2 = new ProducerImpl[A](new Proxy)
             consumer(p1)
