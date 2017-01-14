@@ -113,13 +113,12 @@ object StdInTest
 
     class stdReader extends Publisher[String]
     {
-        val subscribers = mutable.ListBuffer.empty[Subscriber[String]]
+        private val subscribers = mutable.ListBuffer.empty[Subscriber[String]]
 
         override def subscribe(subscriber: Subscriber[String]): Unit = subscribers += subscriber
         override def unsubscribe(subscriber: Subscriber[String]): Unit = subscribers -= subscriber
 
-        val executorContext = ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
-
+        private val executorContext = ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
         Future {
             while(true){
                 val line = StdIn.readLine()
@@ -130,7 +129,7 @@ object StdInTest
 
     def apply(): Unit = {
         val producer: Producer[String] = Producer(new stdReader)
-        val transformer: String => Int = _.toInt
+        val toInt: String => Int = _.toInt
         val consumer: Consumer[Int, Int] = Consumer{
             p => for {
                 a <- p.get()
@@ -139,7 +138,7 @@ object StdInTest
         }
 
         println("Input some numbers:")
-        val result: Future[Int] = producer.transform(transformer) <=> consumer
+        val result: Future[Int] = producer.transform(toInt) <=> consumer
         println("SUM IS: " + Await.result(result, Duration.Inf))
     }
 }
