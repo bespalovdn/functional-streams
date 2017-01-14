@@ -51,7 +51,7 @@ private [funcstream] class FStreamController[A, B](upStream: FStream[A, B])
     private def fork(): DownStream[A, B] = new DownStream(this)
 }
 
-private[funcstream] class DownStream[A, B](upStream: FStreamController[A, B])
+private[funcstream] class DownStream[A, B](controller: FStreamController[A, B])
     extends FStream[A, B]
         with FStreamConnector[A, B]
 {
@@ -60,14 +60,14 @@ private[funcstream] class DownStream[A, B](upStream: FStreamController[A, B])
 
     override def read(timeout: Duration): Future[A] = {
         if(readQueue.synchronized{readQueue.isEmpty}){
-            upStream.read(timeout)
+            controller.read(timeout)
             readQueue.synchronized{readQueue.dequeue()}
         } else {
             readQueue.synchronized{readQueue.dequeue()}
         }
     }
 
-    override def write(elem: B): Future[Unit] = upStream.write(elem)
+    override def write(elem: B): Future[Unit] = controller.write(elem)
 
     override def <=>[C, D, X](c: FConsumer[A, B, C, D, X]): Future[X] = {
         subscribe()
@@ -77,19 +77,19 @@ private[funcstream] class DownStream[A, B](upStream: FStreamController[A, B])
     }
 
     override def <=>[C, D](pipe: FPipe[A, B, C, D]): FStream[C, D] with FStreamConnector[C, D] = {
-        upStream <=> pipe
+        controller <=> pipe
     }
 
     private def subscribe(): Unit = subscribersCount.synchronized{
         if(subscribersCount.getAndIncrement() == 0) {
-            upStream.subscribe(readQueue)
+            controller.subscribe(readQueue)
         }
     }
 
     private def unsubscribe(): Unit = subscribersCount.synchronized{
         if(subscribersCount.decrementAndGet() == 0) {
-            upStream.unsubscribe(readQueue)
-            readQueue.clear()
+            controller.unsubscribe(readQueue)
+            readQueue.synchronized(readQueue.clear())
         }
     }
 }

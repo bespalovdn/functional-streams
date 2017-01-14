@@ -54,7 +54,9 @@ class FunctionalStreamsTest extends FlatSpec
             override def read(timeout: Duration): Future[Int] = upStream.read(timeout).map(_ * 2)
             override def write(elem: Int): Future[Unit] = upStream.write(elem * 2)
         }}
-        val consumer: FConsumer[Int, Int, Int, Int, Unit] = FConsumer{ implicit stream => for {
+        val consumer: FPlainConsumer[Int, Int, Unit] = FConsumer{ implicit stream => for {
+                i <- stream.read()
+                _ <- {i should be (2); success()}
                 _ <- stream.write(1)
                 _ <- {endpoint.lastWrite should be (2); success()}
                 i <- stream.read()
