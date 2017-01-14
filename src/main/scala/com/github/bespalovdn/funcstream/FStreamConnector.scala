@@ -25,11 +25,11 @@ private [funcstream] class FStreamController[A, B](upStream: FStream[A, B])
     extends FStream[A, B]
         with FStreamConnector[A, B]
 {
-    private val downReadQueues = mutable.ListBuffer.empty[mutable.Queue[Future[A]]]
+    private val subscribers = mutable.ListBuffer.empty[Subscriber[A]]
 
     override def read(timeout: Duration): Future[A] = synchronized{
         val f = upStream.read(timeout)
-        downReadQueues.synchronized{ downReadQueues.foreach(q => q.synchronized{ q.enqueue(f) }) }
+        subscribers.synchronized{ subscribers.foreach(_.push(f)) }
         f
     }
 
@@ -52,15 +52,15 @@ private [funcstream] class FStreamController[A, B](upStream: FStream[A, B])
         downStream <=> c
     }
 
-    def subscribe(downQueue: mutable.Queue[Future[A]]): Unit = {
-        downReadQueues.synchronized{ downReadQueues += downQueue }
+    def subscribe(subscriber: Subscriber[A]): Unit = {
+        subscribers.synchronized{ subscribers += subscriber }
         upStream match {
             case subscription: Subscription => subscription.subscribe()
             case _ =>
         }
     }
-    def unsubscribe(downQueue: mutable.Queue[Future[A]]): Unit = {
-        downReadQueues.synchronized{ downReadQueues -= downQueue }
+    def unsubscribe(subscriber: Subscriber[A]): Unit = {
+        subscribers.synchronized{ subscribers -= subscriber }
         upStream match {
             case subscription: Subscription => subscription.unsubscribe()
             case _ =>
@@ -75,13 +75,20 @@ trait Subscription{
     def unsubscribe(): Unit
 }
 
+trait Subscriber[A]{
+    def push(elem: Future[A]): Unit
+}
+
 private[funcstream] class DownStream[A, B](controller: FStreamController[A, B])
     extends FStream[A, B]
     with FStreamConnector[A, B]
     with Subscription
+    with Subscriber[A]
 {
     private val readQueue = new mutable.Queue[Future[A]]()
     private val subscribersCount = new AtomicInteger(0)
+
+    override def push(elem: Future[A]): Unit = readQueue.synchronized{readQueue.enqueue(elem)}
 
     override def read(timeout: Duration): Future[A] = {
         if(readQueue.synchronized{readQueue.isEmpty}){
@@ -107,13 +114,13 @@ private[funcstream] class DownStream[A, B](controller: FStreamController[A, B])
 
     override def subscribe(): Unit = subscribersCount.synchronized{
         if(subscribersCount.getAndIncrement() == 0) {
-            controller.subscribe(readQueue)
+            controller.subscribe(this)
         }
     }
 
     override def unsubscribe(): Unit = subscribersCount.synchronized{
         if(subscribersCount.decrementAndGet() == 0) {
-            controller.unsubscribe(readQueue)
+            controller.unsubscribe(this)
             readQueue.synchronized(readQueue.clear())
         }
     }
