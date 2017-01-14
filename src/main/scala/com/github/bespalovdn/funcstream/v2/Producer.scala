@@ -153,7 +153,8 @@ object StdInTest
 
     def apply(): Unit = {
         val producer: Producer[String] = Producer(new stdReader)
-        val toInt: String => Int = _.toInt
+        val toInt: String => Int = _.toInt // transformer
+        val even: Int => Boolean = i => i % 2 == 0 // filter
         val consumer: Consumer[Int, Int] = Consumer{
             p => for {
                 a <- p.get()
@@ -162,7 +163,7 @@ object StdInTest
         }
 
         println("Input some numbers:")
-        val result: Future[Int] = producer.transform(toInt) <=> consumer
-        println("SUM IS: " + Await.result(result, Duration.Inf))
+        val result: Future[Int] = producer.transform(toInt).filter(even) <=> consumer
+        println("SUM OF EVENS IS: " + Await.result(result, Duration.Inf))
     }
 }
