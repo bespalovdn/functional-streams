@@ -21,7 +21,7 @@ class FunctionalStreamsTest extends FlatSpec
     implicit def executionContext: ExecutionContext = scala.concurrent.ExecutionContext.global
 
     "The test" should "check if read with timeout works" in {
-        val endpoint = new FStream[Int, Int] with TimeoutSupport{
+        val endpoint = new FStreamV1[Int, Int] with TimeoutSupport{
             override def read(timeout: Duration): Future[Int] = withTimeoutDo(timeout)(Promise[Int].future) // never completes
             override def write(elem: Int): Future[Unit] = Future.successful(())
         }
@@ -42,7 +42,7 @@ class FunctionalStreamsTest extends FlatSpec
     }
 
     it should "check if piping functionality works" in {
-        val endpoint = new FStream[Int, Int] {
+        val endpoint = new FStreamV1[Int, Int] {
             var lastWrittenElem: Int = 0
             override def read(timeout: Duration): Future[Int] = success(lastWrittenElem)
             override def write(elem: Int): Future[Unit] = {
@@ -50,7 +50,7 @@ class FunctionalStreamsTest extends FlatSpec
                 success()
             }
         }
-        val twice: FPipe[Int, Int, Int, Int] = FPipe{ upStream => new FStream[Int, Int]{
+        val twice: FPipe[Int, Int, Int, Int] = FPipe{ upStream => new FStreamV1[Int, Int]{
             override def read(timeout: Duration): Future[Int] = upStream.read(timeout).map(_ * 2)
             override def write(elem: Int): Future[Unit] = upStream.write(elem * 2)
         }}
@@ -67,7 +67,7 @@ class FunctionalStreamsTest extends FlatSpec
     }
 
     it should "check if stream forking works" in {
-        val endpoint = new FStream[Int, Int] {
+        val endpoint = new FStreamV1[Int, Int] {
             private var _readCount: Int = 0
             private val readValue: Iterator[Int] = Stream.from(1).iterator
 

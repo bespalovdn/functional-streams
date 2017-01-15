@@ -10,19 +10,19 @@ import scala.concurrent.duration.Duration
 trait FStreamConnector[A, B]
 {
     def <=> [C, D, X](c: FConsumer[A, B, C, D, X]): Future[X]
-    def <=> [C, D](pipe: FPipe[A, B, C, D]): FStream[C, D] with FStreamConnector[C, D]
+    def <=> [C, D](pipe: FPipe[A, B, C, D]): FStreamV1[C, D] with FStreamConnector[C, D]
 }
 
 object FStreamConnector
 {
-    def apply[A, B](stream: FStream[A, B]): FStreamConnector[A, B] = stream match {
+    def apply[A, B](stream: FStreamV1[A, B]): FStreamConnector[A, B] = stream match {
         case stream: FStreamConnector[A@unchecked, B@unchecked] => stream
         case _ => new FStreamController(stream)
     }
 }
 
-private [funcstream] class FStreamController[A, B](upStream: FStream[A, B])
-    extends FStream[A, B]
+private [funcstream] class FStreamController[A, B](upStream: FStreamV1[A, B])
+    extends FStreamV1[A, B]
         with FStreamConnector[A, B]
 {
     private val subscribers = mutable.ListBuffer.empty[Subscriber[A]]
@@ -35,10 +35,10 @@ private [funcstream] class FStreamController[A, B](upStream: FStream[A, B])
 
     override def write(elem: B): Future[Unit] = synchronized{ upStream.write(elem) }
 
-    override def <=> [C, D](pipe: FPipe[A, B, C, D]): FStream[C, D] with FStreamConnector[C, D] = {
+    override def <=> [C, D](pipe: FPipe[A, B, C, D]): FStreamV1[C, D] with FStreamConnector[C, D] = {
         val downStream = fork()
-        val piped: FStream[C, D] = pipe.apply(downStream)
-        val pipedSubscription = new FStream[C, D] with Subscription {
+        val piped: FStreamV1[C, D] = pipe.apply(downStream)
+        val pipedSubscription = new FStreamV1[C, D] with Subscription {
             override def read(timeout: Duration): Future[C] = piped.read(timeout)
             override def write(elem: D): Future[Unit] = piped.write(elem)
             override def subscribe(): Unit = downStream.subscribe()
@@ -80,7 +80,7 @@ trait Subscriber[A]{
 }
 
 private[funcstream] class DownStream[A, B](controller: FStreamController[A, B])
-    extends FStream[A, B]
+    extends FStreamV1[A, B]
     with FStreamConnector[A, B]
     with Subscription
     with Subscriber[A]
@@ -108,7 +108,7 @@ private[funcstream] class DownStream[A, B](controller: FStreamController[A, B])
         f
     }
 
-    override def <=>[C, D](pipe: FPipe[A, B, C, D]): FStream[C, D] with FStreamConnector[C, D] = {
+    override def <=>[C, D](pipe: FPipe[A, B, C, D]): FStreamV1[C, D] with FStreamConnector[C, D] = {
         controller <=> pipe
     }
 

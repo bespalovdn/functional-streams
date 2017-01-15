@@ -2,7 +2,7 @@ package com.github.bespalovdn.funcstream
 
 import scala.concurrent.{ExecutionContext, Future}
 
-trait FConsumer[A, B, C, D, X] extends (FStream[A, B] => Future[(FStream[C, D], X)])
+trait FConsumer[A, B, C, D, X] extends (FStreamV1[A, B] => Future[(FStreamV1[C, D], X)])
 {
     def >>= [E, F, Y](cXY: X => FConsumer[C, D, E, F, Y])(implicit ec: ExecutionContext): FConsumer[A, B, E, F, Y] =
         FConsumer.combination1(ec)(this)(cXY)
@@ -17,7 +17,7 @@ trait FConsumer[A, B, C, D, X] extends (FStream[A, B] => Future[(FStream[C, D], 
     }
 
     def flatMap[E, F, Y](fn: X => FConsumer[C, D, E, F, Y])(implicit ec: ExecutionContext): FConsumer[A, B, E, F, Y] =
-    FConsumer { (sAB: FStream[A, B]) => {
+    FConsumer { (sAB: FStreamV1[A, B]) => {
             import com.github.bespalovdn.funcstream.ext.FutureExtensions._
             this.apply(sAB) >>= {
                 case (sCD, x) =>
@@ -30,9 +30,9 @@ trait FConsumer[A, B, C, D, X] extends (FStream[A, B] => Future[(FStream[C, D], 
 
 object FConsumer
 {
-    def apply[A, B, C, D, E](fn: FStream[A, B] => Future[(FStream[C, D], E)]): FConsumer[A, B, C, D, E] = {
+    def apply[A, B, C, D, E](fn: FStreamV1[A, B] => Future[(FStreamV1[C, D], E)]): FConsumer[A, B, C, D, E] = {
         new FConsumer[A, B, C, D, E] {
-            override def apply(stream: FStream[A, B]): Future[(FStream[C, D], E)] = fn(stream)
+            override def apply(stream: FStreamV1[A, B]): Future[(FStreamV1[C, D], E)] = fn(stream)
         }
     }
 

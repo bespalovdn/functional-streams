@@ -14,21 +14,21 @@ trait EndPoint[A, B] extends Publisher[A]{
     def write(elem: B): Unit
 }
 
-trait FStream2[A, B]{
+trait FStream[A, B]{
     def read(timeout: Duration = null): Future[A]
     def write(elem: B): Future[Unit]
     def <=> [C](c: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C]
-    def transform [C](fn: A => C): FStream2[C, B]
-    def filter(fn: A => Boolean): FStream2[A, B]
-    def fork(consumer: FStream2[A, B] => Unit): FStream2[A, B]
+    def transform [C](fn: A => C): FStream[C, B]
+    def filter(fn: A => Boolean): FStream[A, B]
+    def fork(consumer: FStream[A, B] => Unit): FStream[A, B]
 }
 
-object FStream2
+object FStream
 {
-    def apply[A, B](endPoint: EndPoint[A, B]): FStream2[A, B] = new FStreamImpl[A, B](endPoint)
+    def apply[A, B](endPoint: EndPoint[A, B]): FStream[A, B] = new FStreamImpl[A, B](endPoint)
 
     private class FStreamImpl[A, B](endPoint: EndPoint[A, B])
-        extends FStream2[A, B]
+        extends FStream[A, B]
     {
         private val reader: Producer[A] = Producer(endPoint)
 
@@ -44,23 +44,23 @@ object FStream2
             reader <=> consumer
         }
 
-        override def transform[C](fn: (A) => C): FStream2[C, B] = {
+        override def transform[C](fn: (A) => C): FStream[C, B] = {
             val transformed = reader.transform(fn)
             producer2stream(transformed)
         }
 
-        override def filter(fn: (A) => Boolean): FStream2[A, B] = {
+        override def filter(fn: (A) => Boolean): FStream[A, B] = {
             val filtered = reader.filter(fn)
             producer2stream(filtered)
         }
 
-        override def fork(consumer: FStream2[A, B] => Unit): FStream2[A, B] = {
+        override def fork(consumer: FStream[A, B] => Unit): FStream[A, B] = {
             producer2stream(reader.fork(p => consumer(producer2stream(p))))
         }
 
-        private def producer2stream[C](producer: Producer[C]): FStream2[C, B] = {
+        private def producer2stream[C](producer: Producer[C]): FStream[C, B] = {
             def getPublisher(producer: Producer[C]): Publisher[C] = producer.asInstanceOf[ProducerImpl[C]].publisher
-            def toStream(producer: Producer[C]): FStream2[C, B] = new FStreamImpl[C, B](new ProxyEndPoint(getPublisher(producer)))
+            def toStream(producer: Producer[C]): FStream[C, B] = new FStreamImpl[C, B](new ProxyEndPoint(getPublisher(producer)))
             toStream(producer)
         }
 
@@ -85,7 +85,7 @@ object FStream2
     }
 }
 
-trait FConsumer[A, B, C] extends (FStream2[A, B] => Future[C]) {
+trait FConsumer[A, B, C] extends (FStream[A, B] => Future[C]) {
     def >> [D](cD: => FConsumer[A, B, D])(implicit ec: ExecutionContext): FConsumer[A, B, D] = FConsumer {
         stream => {this.apply(stream) >> cD.apply(stream)}
     }
@@ -93,8 +93,8 @@ trait FConsumer[A, B, C] extends (FStream2[A, B] => Future[C]) {
 
 object FConsumer
 {
-    def apply[A, B, C](fn: FStream2[A, B] => Future[C]): FConsumer[A, B, C] = new FConsumer[A, B, C]{
-        override def apply(stream: FStream2[A, B]): Future[C] = fn(stream)
+    def apply[A, B, C](fn: FStream[A, B] => Future[C]): FConsumer[A, B, C] = new FConsumer[A, B, C]{
+        override def apply(stream: FStream[A, B]): Future[C] = fn(stream)
     }
 }
 
@@ -125,7 +125,7 @@ object FStreamStdInTest
     def apply(): Unit = {
         import scala.concurrent.ExecutionContext.Implicits.global
 
-        val stream: FStream2[String, String] = FStream2(new StdEndpoint)
+        val stream: FStream[String, String] = FStream(new StdEndpoint)
         //        val toInt: String => Int = _.toInt // transformer
         //        val even: Int => Boolean = i => i % 2 == 0 // filter
         val consumer: FConsumer[String, String, Int] = FConsumer { stream =>
