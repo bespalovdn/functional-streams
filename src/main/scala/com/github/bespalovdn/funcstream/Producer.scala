@@ -1,4 +1,4 @@
-package com.github.bespalovdn.funcstream.v2
+package com.github.bespalovdn.funcstream
 
 import java.util.concurrent.Executors
 
@@ -34,7 +34,7 @@ object Producer
 
     private lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-    private[v2] class ProducerImpl[A](val publisher: Publisher[A]) extends Producer[A] with Subscriber[A]
+    private[funcstream] class ProducerImpl[A](val publisher: Publisher[A]) extends Producer[A] with Subscriber[A]
     {
         private val available = mutable.Queue.empty[A]
         private val requested = mutable.Queue.empty[Promise[A]]

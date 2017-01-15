@@ -1,4 +1,4 @@
-package com.github.bespalovdn.funcstream
+package com.github.bespalovdn.funcstream.v1
 
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -9,7 +9,7 @@ import scala.concurrent.duration.Duration
 
 trait FStreamConnector[A, B]
 {
-    def <=> [C, D, X](c: FConsumer[A, B, C, D, X]): Future[X]
+    def <=> [C, D, X](c: FConsumerV1[A, B, C, D, X]): Future[X]
     def <=> [C, D](pipe: FPipe[A, B, C, D]): FStreamV1[C, D] with FStreamConnector[C, D]
 }
 
@@ -47,7 +47,7 @@ private [funcstream] class FStreamController[A, B](upStream: FStreamV1[A, B])
         new FStreamController(pipedSubscription)
     }
 
-    override def <=> [C, D, X](c: FConsumer[A, B, C, D, X]): Future[X] = {
+    override def <=> [C, D, X](c: FConsumerV1[A, B, C, D, X]): Future[X] = {
         val downStream = fork()
         downStream <=> c
     }
@@ -101,7 +101,7 @@ private[funcstream] class DownStream[A, B](controller: FStreamController[A, B])
 
     override def write(elem: B): Future[Unit] = controller.write(elem)
 
-    override def <=>[C, D, X](c: FConsumer[A, B, C, D, X]): Future[X] = {
+    override def <=>[C, D, X](c: FConsumerV1[A, B, C, D, X]): Future[X] = {
         subscribe()
         val f = c.apply(this).map(_._2)
         f.onComplete(_ => unsubscribe())

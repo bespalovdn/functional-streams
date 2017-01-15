@@ -1,4 +1,4 @@
-package com.github.bespalovdn.funcstream
+package com.github.bespalovdn.funcstream.v1
 
 import java.util.concurrent.TimeoutException
 
@@ -26,7 +26,7 @@ class FunctionalStreamsTest extends FlatSpec
             override def write(elem: Int): Future[Unit] = Future.successful(())
         }
 
-        val consumer: FPlainConsumer[Int, Int, Unit] = FConsumer { implicit stream => for {
+        val consumer: FPlainConsumer[Int, Int, Unit] = FConsumerV1 { implicit stream => for {
                 _ <- stream.read(timeout = 100.millisecond)
             } yield consume()
         }
@@ -54,7 +54,7 @@ class FunctionalStreamsTest extends FlatSpec
             override def read(timeout: Duration): Future[Int] = upStream.read(timeout).map(_ * 2)
             override def write(elem: Int): Future[Unit] = upStream.write(elem * 2)
         }}
-        val consumer: FPlainConsumer[Int, Int, Unit] = FConsumer{ implicit stream => for {
+        val consumer: FPlainConsumer[Int, Int, Unit] = FConsumerV1{ implicit stream => for {
                 i <- stream.read()
                 _ <- {i should be (0); success()}
                 _ <- stream.write(1)
@@ -82,13 +82,13 @@ class FunctionalStreamsTest extends FlatSpec
 
         type Consumer = FPlainConsumer[Int, Int, Unit]
 
-        val echoServer: Consumer = FConsumer { implicit stream => for {
+        val echoServer: Consumer = FConsumerV1 { implicit stream => for {
                 a <- stream.read()
                 _ <- stream.write(a)
             } yield consume ()
         }
 
-        def check(fn: => Unit): Consumer = FConsumer{ implicit stream =>
+        def check(fn: => Unit): Consumer = FConsumerV1{ implicit stream =>
             fn
             success(consume())
         }
@@ -98,7 +98,7 @@ class FunctionalStreamsTest extends FlatSpec
                 endpoint.readCount should be (0)
             } >> echoServer >> check {
                 endpoint.readCount should be (1)
-            } >> FConsumer.fork(echoServer) >> echoServer >> check {
+            } >> FConsumerV1.fork(echoServer) >> echoServer >> check {
                 endpoint.readCount should be (3)
             }
         }

@@ -1,4 +1,4 @@
-package com.github.bespalovdn.funcstream
+package com.github.bespalovdn.funcstream.v1
 
 trait FPipe[A, B, C, D] extends (FStreamV1[A, B] => FStreamV1[C, D])
 

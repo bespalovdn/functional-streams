@@ -1,4 +1,4 @@
-package com.github.bespalovdn.funcstream
+package com.github.bespalovdn.funcstream.v1
 
 import scala.concurrent.Future
 import scala.concurrent.duration.Duration
