@@ -10,15 +10,6 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.io.StdIn
 
-trait Publisher[A]{
-    def subscribe(subscriber: Subscriber[A])
-    def unsubscribe(subscriber: Subscriber[A])
-}
-
-trait Subscriber[A]{
-    def push(elem: A)
-}
-
 ////////////////////////////////////////////////////////////////
 trait Producer[A] {
     def get(timeout: Duration = null): Future[A]
