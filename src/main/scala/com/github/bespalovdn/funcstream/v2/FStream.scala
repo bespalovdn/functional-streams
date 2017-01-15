@@ -89,6 +89,10 @@ trait FConsumer[A, B, C] extends (FStream[A, B] => Future[C]) {
     def >> [D](cD: => FConsumer[A, B, D])(implicit ec: ExecutionContext): FConsumer[A, B, D] = FConsumer {
         stream => {this.apply(stream) >> cD.apply(stream)}
     }
+    def >>= [D](cCD: C => FConsumer[A, B, D])(implicit ec: ExecutionContext): FConsumer[A, B, D] = FConsumer {
+        stream => {this.apply(stream) >>= (C => cCD(C).apply(stream))}
+    }
+
 }
 
 object FConsumer
