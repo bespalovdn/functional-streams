@@ -206,10 +206,9 @@ object MonotonicallyIncreasePublisherTest
         def consumer(name: String, nTimes: Int): Consumer[String, Unit] = Consumer{
             p => {
                 if(nTimes > 0) {
-                    p.get() >>= {
-                        case str =>
-                            println(s"$name: $str")
-                            consumer(name, nTimes - 1).apply(p)
+                    p.get() >>= { str =>
+                        println(s"$name: $str")
+                        consumer(name, nTimes - 1).apply(p)
                     }
                 } else {
                     Future.successful(())
