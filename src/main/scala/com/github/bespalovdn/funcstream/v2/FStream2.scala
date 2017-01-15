@@ -18,6 +18,8 @@ trait FStream2[A, B]{
     def read(timeout: Duration = null): Future[A]
     def write(elem: B): Future[Unit]
     def <=> [C](c: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C]
+    def transform [C](fn: A => C): FStream2[C, B]
+    def filter(fn: A => Boolean): FStream2[A, B]
     def fork(consumer: FStream2[A, B] => Unit): FStream2[A, B]
 }
 
@@ -42,28 +44,42 @@ object FStream2
             reader <=> consumer
         }
 
-        override def fork(consumer: FStream2[A, B] => Unit): FStream2[A, B] = {
-            def getPublisher(producer: Producer[A]): Publisher[A] = producer.asInstanceOf[ProducerImpl[A]].publisher
-            def toStream(producer: Producer[A]): FStream2[A, B] = new FStreamImpl[A, B](new ProxyEndPoint(getPublisher(producer)))
-            toStream(reader.fork(p => consumer(toStream(p))))
+        override def transform[C](fn: (A) => C): FStream2[C, B] = {
+            val transformed = reader.transform(fn)
+            producer2stream(transformed)
         }
 
-        private class ProxyEndPoint(publisher: Publisher[A]) extends EndPoint[A, B] with Subscriber[A] {
-            private val subscribers = mutable.ListBuffer.empty[Subscriber[A]]
-            override def subscribe(subscriber: Subscriber[A]): Unit = {
+        override def filter(fn: (A) => Boolean): FStream2[A, B] = {
+            val filtered = reader.filter(fn)
+            producer2stream(filtered)
+        }
+
+        override def fork(consumer: FStream2[A, B] => Unit): FStream2[A, B] = {
+            producer2stream(reader.fork(p => consumer(producer2stream(p))))
+        }
+
+        private def producer2stream[C](producer: Producer[C]): FStream2[C, B] = {
+            def getPublisher(producer: Producer[C]): Publisher[C] = producer.asInstanceOf[ProducerImpl[C]].publisher
+            def toStream(producer: Producer[C]): FStream2[C, B] = new FStreamImpl[C, B](new ProxyEndPoint(getPublisher(producer)))
+            toStream(producer)
+        }
+
+        private class ProxyEndPoint[C](publisher: Publisher[C]) extends EndPoint[C, B] with Subscriber[C] {
+            private val subscribers = mutable.ListBuffer.empty[Subscriber[C]]
+            override def subscribe(subscriber: Subscriber[C]): Unit = {
                 if(subscribers.isEmpty){
                     publisher.subscribe(this)
                 }
                 subscribers += subscriber
             }
-            override def unsubscribe(subscriber: Subscriber[A]): Unit = {
+            override def unsubscribe(subscriber: Subscriber[C]): Unit = {
                 subscribers -= subscriber
                 if(subscribers.isEmpty){
                     publisher.unsubscribe(this)
                 }
             }
             override def write(elem: B): Unit = endPoint.write(elem)
-            override def push(elem: A): Unit = subscribers.foreach(_.push(elem))
+            override def push(elem: C): Unit = subscribers.foreach(_.push(elem))
         }
 
     }
