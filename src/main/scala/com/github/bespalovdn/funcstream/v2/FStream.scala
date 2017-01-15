@@ -126,17 +126,17 @@ object FStreamStdInTest
         import scala.concurrent.ExecutionContext.Implicits.global
 
         val stream: FStream[String, String] = FStream(new StdEndpoint)
-        //        val toInt: String => Int = _.toInt // transformer
-        //        val even: Int => Boolean = i => i % 2 == 0 // filter
-        val consumer: FConsumer[String, String, Int] = FConsumer { stream =>
+        val toInt: String => Int = _.toInt // transformer
+        val even: Int => Boolean = i => i % 2 == 0 // filter
+        val consumer: FConsumer[Int, String, Int] = FConsumer { stream =>
             for {
                 _ <- stream.write("Enter some number:")
-                a <- stream.read().map(_.toInt)
+                a <- stream.read()
                 _ <- stream.write("Enter some number once again:")
-                b <- stream.read().map(_.toInt)
+                b <- stream.read()
             } yield a + b
         }
-        val result: Future[Int] = stream <=> consumer
+        val result: Future[Int] = stream.transform(toInt).filter(even) <=> consumer
         println("SUM OF EVENS IS: " + Await.result(result, Duration.Inf))
     }
 }
