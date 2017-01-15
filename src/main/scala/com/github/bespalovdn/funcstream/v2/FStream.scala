@@ -16,43 +16,53 @@ trait FStream[A, B]{
 
 object FStream
 {
-    def apply[A, B](endPoint: EndPoint[A, B]): FStream[A, B] = {
-        val impl = new FStreamImpl[A, B](endPoint)
-        impl.subscribe(endPoint)
-        impl
-    }
+    def apply[A, B](endPoint: EndPoint[A, B]): FStream[A, B] = new FStreamImpl[A, B](endPoint)
 
-    private class FStreamImpl[A, B](publisher: Publisher[A])
+    private class FStreamImpl[A, B](endPoint: EndPoint[A, B])
         extends FStream[A, B]
-        with Publisher[B] with Subscriber[A]
     {
-        private val subscribersA = mutable.ListBuffer.empty[Subscriber[A]]
-        private val subscribersB = mutable.ListBuffer.empty[Subscriber[B]]
-
-        private object readQueue{
+        object readQueue{
             val available = mutable.Queue.empty[A]
             val requested = mutable.Queue.empty[Promise[A]]
         }
 
-        override def subscribe(subscriber: Subscriber[B]): Unit = {
-            if(subscribersB.isEmpty){
-                publisher.subscribe(this)
+        private object upStream extends Publisher[B] with Subscriber[A] {
+            val subscribers = mutable.ListBuffer.empty[Subscriber[B]]
+
+            override def subscribe(subscriber: Subscriber[B]): Unit = subscribers += subscriber
+
+            override def unsubscribe(subscriber: Subscriber[B]): Unit = subscribers -= subscriber
+
+            override def push(elem: A): Unit = {
+                if(readQueue.requested.nonEmpty)
+                    readQueue.requested.dequeue().trySuccess(elem)
+                else
+                    readQueue.available.enqueue(elem)
             }
-            subscribersB += subscriber
         }
 
-        override def unsubscribe(subscriber: Subscriber[B]): Unit = {
-            subscribersB -= subscriber
-            if(subscribersB.isEmpty){
-                publisher.unsubscribe(this)
-            }
-        }
+        upStream.subscribe(endPoint) // to write to endpoint
 
-        override def push(elem: A): Unit = {
-            if(readQueue.requested.nonEmpty)
-                readQueue.requested.dequeue().trySuccess(elem)
-            else
-                readQueue.available.enqueue(elem)
+        private object downStream extends Publisher[A] with Subscriber[B] {
+            val subscribers = mutable.ListBuffer.empty[Subscriber[A]]
+
+            override def subscribe(subscriber: Subscriber[A]): Unit = {
+                if(subscribers.isEmpty){
+                    endPoint.subscribe(upStream) // to read from endpoint
+                }
+                subscribers += subscriber
+            }
+
+            override def unsubscribe(subscriber: Subscriber[A]): Unit = {
+                subscribers -= subscriber
+                if(subscribers.isEmpty){
+                    endPoint.unsubscribe(upStream)
+                }
+            }
+
+            override def push(elem: B): Unit = {
+                upStream.subscribers.foreach(_.push(elem))
+            }
         }
 
         override def read(timeout: Duration): Future[A] = {
@@ -66,7 +76,7 @@ object FStream
         }
 
         override def write(elem: B, timeout: Duration): Future[Unit] = {
-            subscribersB.foreach(_.push(elem))
+            upStream.subscribers.foreach(_.push(elem))
             success()
         }
 
