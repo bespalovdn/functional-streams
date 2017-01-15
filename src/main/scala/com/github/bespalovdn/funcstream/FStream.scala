@@ -15,7 +15,7 @@ trait FStream[A, B]{
     def read(timeout: Duration = null): Future[A]
     def write(elem: B): Future[Unit]
     def <=> [C](c: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C]
-    def transform [C](fn: A => C): FStream[C, B]
+    def transform [C, D](transOut: A => C, transIn: D => B): FStream[C, D]
     def filter(fn: A => Boolean): FStream[A, B]
     def fork(consumer: FStream[A, B] => Unit): FStream[A, B]
 }
@@ -41,27 +41,27 @@ object FStream
             reader <=> consumer
         }
 
-        override def transform[C](fn: (A) => C): FStream[C, B] = {
-            val transformed = reader.transform(fn)
-            producer2stream(transformed)
+        override def transform [C, D](transOut: A => C, transIn: D => B): FStream[C, D] = {
+            val transformed: Producer[C] = reader.transform(transOut)
+            producer2stream(transformed, transIn)
         }
 
         override def filter(fn: (A) => Boolean): FStream[A, B] = {
             val filtered = reader.filter(fn)
-            producer2stream(filtered)
+            producer2stream(filtered, identity)
         }
 
         override def fork(consumer: FStream[A, B] => Unit): FStream[A, B] = {
-            producer2stream(reader.fork(p => consumer(producer2stream(p))))
+            producer2stream(reader.fork(p => consumer(producer2stream(p, identity))), identity)
         }
 
-        private def producer2stream[C](producer: Producer[C]): FStream[C, B] = {
+        private def producer2stream[C, D](producer: Producer[C], transIn: D => B): FStream[C, D] = {
             def getPublisher(producer: Producer[C]): Publisher[C] = producer.asInstanceOf[ProducerImpl[C]].publisher
-            def toStream(producer: Producer[C]): FStream[C, B] = new FStreamImpl[C, B](new ProxyEndPoint(getPublisher(producer)))
+            def toStream(producer: Producer[C]): FStream[C, D] = new FStreamImpl[C, D](new ProxyEndPoint(getPublisher(producer), transIn))
             toStream(producer)
         }
 
-        private class ProxyEndPoint[C](publisher: Publisher[C]) extends EndPoint[C, B] with Subscriber[C] {
+        private class ProxyEndPoint[C, D](publisher: Publisher[C], transIn: D => B) extends EndPoint[C, D] with Subscriber[C] {
             private val subscribers = mutable.ListBuffer.empty[Subscriber[C]]
             override def subscribe(subscriber: Subscriber[C]): Unit = {
                 if(subscribers.isEmpty){
@@ -75,7 +75,7 @@ object FStream
                     publisher.unsubscribe(this)
                 }
             }
-            override def write(elem: B): Unit = endPoint.write(elem)
+            override def write(elem: D): Unit = endPoint.write(transIn(elem))
             override def push(elem: C): Unit = subscribers.foreach(_.push(elem))
         }
 
@@ -118,7 +118,7 @@ object FStreamStdInTest
                 b <- stream.read()
             } yield a + b
         }
-        val result: Future[Int] = stream.transform(toInt).filter(even) <=> consumer
+        val result: Future[Int] = stream.transform(toInt, identity[String]).filter(even) <=> consumer
         println("SUM OF EVENS IS: " + Await.result(result, Duration.Inf))
     }
 }
