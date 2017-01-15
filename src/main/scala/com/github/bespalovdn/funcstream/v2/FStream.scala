@@ -1,19 +1,21 @@
 package com.github.bespalovdn.funcstream.v2
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import com.github.bespalovdn.funcstream.ext.FutureExtensions._
+import com.github.bespalovdn.funcstream.v2.Producer.ProducerImpl
 
 import scala.collection.mutable
 import scala.concurrent.duration.Duration
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{ExecutionContext, Future}
 
-trait EndPoint[A, B] extends Publisher[A] with Subscriber[B]
+trait EndPoint[A, B] extends Publisher[A]{
+    def write(elem: B): Unit
+}
 
 trait FStream[A, B]{
     def read(timeout: Duration = null): Future[A]
-    def write(elem: B, timeout: Duration = null): Future[Unit]
+    def write(elem: B): Future[Unit]
     def <=> [C](c: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C]
+    def fork(consumer: FStream[A, B] => Unit): FStream[A, B]
 }
 
 object FStream
@@ -23,72 +25,44 @@ object FStream
     private class FStreamImpl[A, B](endPoint: EndPoint[A, B])
         extends FStream[A, B]
     {
-        private object readQueue{
-            val available = mutable.Queue.empty[A]
-            val requested = mutable.Queue.empty[Promise[A]]
-        }
+        private val reader: Producer[A] = Producer(endPoint)
 
-        private object upStream extends Publisher[B] with Subscriber[A] {
-            val upSubscribers = mutable.ListBuffer.empty[Subscriber[B]]
+        override def read(timeout: Duration): Future[A] = reader.get(timeout)
 
-            override def subscribe(subscriber: Subscriber[B]): Unit = upSubscribers += subscriber
-
-            override def unsubscribe(subscriber: Subscriber[B]): Unit = upSubscribers -= subscriber
-
-            override def push(elem: A): Unit = downStream.write(elem)
-
-            def write(elem: B): Unit = upSubscribers.foreach(_.push(elem))
-        }
-
-        // endpoint will be constantly subscribed to upStream, to be able to write to endpoint unconditionally
-        upStream.subscribe(endPoint)
-
-        private object downStream extends Subscriber[B] {
-            val subscribersCount = new AtomicInteger(0)
-
-            def subscribe(): Unit = {
-                if(subscribersCount.getAndIncrement() == 0){
-                    endPoint.subscribe(upStream) // to read from endpoint
-                }
-            }
-
-            def unsubscribe(): Unit = {
-                if(subscribersCount.decrementAndGet() == 0){
-                    endPoint.unsubscribe(upStream)
-                }
-            }
-
-            override def push(elem: B): Unit = upStream.write(elem)
-
-            def write(elem: A): Unit = {
-                if(readQueue.requested.nonEmpty)
-                    readQueue.requested.dequeue().trySuccess(elem)
-                else
-                    readQueue.available.enqueue(elem)
-            }
-        }
-
-        override def read(timeout: Duration): Future[A] = {
-            if(readQueue.available.nonEmpty) {
-                Future.successful(readQueue.available.dequeue())
-            } else{
-                val p = Promise[A]
-                readQueue.requested.enqueue(p)
-                p.future
-            }
-        }
-
-        override def write(elem: B, timeout: Duration): Future[Unit] = {
-            upStream.write(elem)
+        override def write(elem: B): Future[Unit] = {
+            endPoint.write(elem)
             success()
         }
 
         override def <=>[C](c: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C] = {
-            downStream.subscribe()
-            val f = c.apply(this)
-            f.onComplete(_ => downStream.unsubscribe())
-            f
+            val consumer = Consumer[A, C] { _ => c.apply(this) }
+            consumer.apply(reader)
         }
+
+        override def fork(consumer: FStream[A, B] => Unit): FStream[A, B] = {
+            def getPublisher(producer: Producer[A]): Publisher[A] = producer.asInstanceOf[ProducerImpl[A]].publisher
+            def toStream(producer: Producer[A]): FStream[A, B] = new FStreamImpl[A, B](new ProxyEndPoint(getPublisher(producer)))
+            toStream(reader.fork(p => consumer(toStream(p))))
+        }
+
+        private class ProxyEndPoint(publisher: Publisher[A]) extends EndPoint[A, B] with Subscriber[A] {
+            private val subscribers = mutable.ListBuffer.empty[Subscriber[A]]
+            override def subscribe(subscriber: Subscriber[A]): Unit = {
+                if(subscribers.isEmpty){
+                    publisher.subscribe(this)
+                }
+                subscribers += subscriber
+            }
+            override def unsubscribe(subscriber: Subscriber[A]): Unit = {
+                subscribers -= subscriber
+                if(subscribers.isEmpty){
+                    publisher.unsubscribe(this)
+                }
+            }
+            override def write(elem: B): Unit = endPoint.write(elem)
+            override def push(elem: A): Unit = subscribers.foreach(_.push(elem))
+        }
+
     }
 }
 

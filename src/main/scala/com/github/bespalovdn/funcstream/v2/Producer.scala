@@ -34,7 +34,7 @@ object Producer
 
     private lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-    private class ProducerImpl[A](publisher: Publisher[A]) extends Producer[A] with Subscriber[A]
+    private[v2] class ProducerImpl[A](val publisher: Publisher[A]) extends Producer[A] with Subscriber[A]
     {
         private val available = mutable.Queue.empty[A]
         private val requested = mutable.Queue.empty[Promise[A]]
