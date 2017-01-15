@@ -1,5 +1,7 @@
 package com.github.bespalovdn.funcstream.v2
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import com.github.bespalovdn.funcstream.ext.FutureExtensions._
 
 import scala.collection.mutable
@@ -21,47 +23,48 @@ object FStream
     private class FStreamImpl[A, B](endPoint: EndPoint[A, B])
         extends FStream[A, B]
     {
-        object readQueue{
+        private object readQueue{
             val available = mutable.Queue.empty[A]
             val requested = mutable.Queue.empty[Promise[A]]
         }
 
         private object upStream extends Publisher[B] with Subscriber[A] {
-            val subscribers = mutable.ListBuffer.empty[Subscriber[B]]
+            val upSubscribers = mutable.ListBuffer.empty[Subscriber[B]]
 
-            override def subscribe(subscriber: Subscriber[B]): Unit = subscribers += subscriber
+            override def subscribe(subscriber: Subscriber[B]): Unit = upSubscribers += subscriber
 
-            override def unsubscribe(subscriber: Subscriber[B]): Unit = subscribers -= subscriber
+            override def unsubscribe(subscriber: Subscriber[B]): Unit = upSubscribers -= subscriber
 
-            override def push(elem: A): Unit = {
-                if(readQueue.requested.nonEmpty)
-                    readQueue.requested.dequeue().trySuccess(elem)
-                else
-                    readQueue.available.enqueue(elem)
-            }
+            override def push(elem: A): Unit = downStream.write(elem)
+
+            def write(elem: B): Unit = upSubscribers.foreach(_.push(elem))
         }
 
-        upStream.subscribe(endPoint) // to write to endpoint
+        // endpoint will be constantly subscribed to upStream, to be able to write to endpoint unconditionally
+        upStream.subscribe(endPoint)
 
-        private object downStream extends Publisher[A] with Subscriber[B] {
-            val subscribers = mutable.ListBuffer.empty[Subscriber[A]]
+        private object downStream extends Subscriber[B] {
+            val subscribersCount = new AtomicInteger(0)
 
-            override def subscribe(subscriber: Subscriber[A]): Unit = {
-                if(subscribers.isEmpty){
+            def subscribe(): Unit = {
+                if(subscribersCount.getAndIncrement() == 0){
                     endPoint.subscribe(upStream) // to read from endpoint
                 }
-                subscribers += subscriber
             }
 
-            override def unsubscribe(subscriber: Subscriber[A]): Unit = {
-                subscribers -= subscriber
-                if(subscribers.isEmpty){
+            def unsubscribe(): Unit = {
+                if(subscribersCount.decrementAndGet() == 0){
                     endPoint.unsubscribe(upStream)
                 }
             }
 
-            override def push(elem: B): Unit = {
-                upStream.subscribers.foreach(_.push(elem))
+            override def push(elem: B): Unit = upStream.write(elem)
+
+            def write(elem: A): Unit = {
+                if(readQueue.requested.nonEmpty)
+                    readQueue.requested.dequeue().trySuccess(elem)
+                else
+                    readQueue.available.enqueue(elem)
             }
         }
 
@@ -76,11 +79,16 @@ object FStream
         }
 
         override def write(elem: B, timeout: Duration): Future[Unit] = {
-            upStream.subscribers.foreach(_.push(elem))
+            upStream.write(elem)
             success()
         }
 
-        override def <=>[C](c: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C] = ???
+        override def <=>[C](c: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C] = {
+            downStream.subscribe()
+            val f = c.apply(this)
+            f.onComplete(_ => downStream.unsubscribe())
+            f
+        }
     }
 }
 
