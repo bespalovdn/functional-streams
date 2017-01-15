@@ -1,4 +1,4 @@
-package com.github.bespalovdn.funcstream
+package com.github.bespalovdn.funcstream.mono
 
 trait Publisher[A]{
     def subscribe(subscriber: Subscriber[A])

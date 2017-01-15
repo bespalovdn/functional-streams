@@ -2,8 +2,9 @@ package com.github.bespalovdn.funcstream
 
 import java.util.concurrent.Executors
 
-import com.github.bespalovdn.funcstream.Producer.ProducerImpl
 import com.github.bespalovdn.funcstream.ext.FutureExtensions._
+import com.github.bespalovdn.funcstream.mono.Producer.ProducerImpl
+import com.github.bespalovdn.funcstream.mono.{Consumer, Producer, Publisher, Subscriber}
 
 import scala.collection.mutable
 import scala.concurrent.duration.Duration
