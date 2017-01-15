@@ -10,6 +10,7 @@ import scala.collection.mutable
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.io.StdIn
+import scala.util.Success
 
 trait FStream[A, B]{
     def read(timeout: Duration = null): Future[A]
@@ -18,6 +19,7 @@ trait FStream[A, B]{
     def transform [C, D](transOut: A => C, transIn: D => B): FStream[C, D]
     def filter(fn: A => Boolean): FStream[A, B]
     def fork(consumer: FStream[A, B] => Unit): FStream[A, B]
+    def listenRead(listener: A => Unit): FStream[A, B]
 }
 
 object FStream
@@ -28,8 +30,18 @@ object FStream
         extends FStream[A, B]
     {
         private val reader: Producer[A] = Producer(endPoint)
+        private val readListeners = mutable.ArrayBuffer.empty[A => Unit]
 
-        override def read(timeout: Duration): Future[A] = reader.get(timeout)
+        override def read(timeout: Duration): Future[A] = {
+            //TODO: this execution context should be a `global` oneL:
+            import scala.concurrent.ExecutionContext.Implicits.global
+            val f = reader.get(timeout)
+            f.onComplete {
+                case Success(a) => readListeners.foreach(fn => fn(a))
+                case _ =>
+            }
+            f
+        }
 
         override def write(elem: B): Future[Unit] = {
             endPoint.write(elem)
@@ -53,6 +65,11 @@ object FStream
 
         override def fork(consumer: FStream[A, B] => Unit): FStream[A, B] = {
             producer2stream(reader.fork(p => consumer(producer2stream(p, identity))), identity)
+        }
+
+        override def listenRead(listener: (A) => Unit): FStream[A, B] = {
+            readListeners.synchronized{ readListeners += listener }
+            this
         }
 
         private def producer2stream[C, D](producer: Producer[C], transIn: D => B): FStream[C, D] = {
