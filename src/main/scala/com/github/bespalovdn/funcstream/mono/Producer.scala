@@ -9,6 +9,7 @@ import scala.collection.mutable
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.io.StdIn
+import scala.util.{Success, Try}
 
 ////////////////////////////////////////////////////////////////
 trait Producer[A] {
@@ -27,19 +28,19 @@ object Producer
 
     private[funcstream] class ProducerImpl[A](val publisher: Publisher[A]) extends Producer[A] with Subscriber[A]
     {
-        private val available = mutable.Queue.empty[A]
+        private val available = mutable.Queue.empty[Try[A]]
         private val requested = mutable.Queue.empty[Promise[A]]
 
-        override def push(elem: A): Unit = {
+        override def push(elem: Try[A]): Unit = {
             if(requested.nonEmpty)
-                requested.dequeue().trySuccess(elem)
+                requested.dequeue().tryComplete(elem)
             else
                 available.enqueue(elem)
         }
 
         override def get(timeout: Duration = null): Future[A] = {
             if(available.nonEmpty) {
-                Future.successful(available.dequeue())
+                Future.fromTry(available.dequeue())
             } else{
                 val p = Promise[A]
                 requested.enqueue(p)
@@ -69,9 +70,9 @@ object Producer
                         publisher.unsubscribe(this)
                     }
                 }
-                override def push(elem: A): Unit = subscribers.foreach{subscriber =>
+                override def push(elem: Try[A]): Unit = subscribers.foreach{subscriber =>
                     try{
-                        val transformed: B = fn(elem)
+                        val transformed: Try[B] = elem.map(fn)
                         subscriber.push(transformed)
                     }catch{
                         case t: Throwable =>
@@ -85,8 +86,9 @@ object Producer
 
         override def filter(fn: A => Boolean): Producer[A] = {
             val proxy = new Proxy{
-                override def push(elem: A): Unit = if(fn(elem)){
-                    super.push(elem)
+                override def push(elem: Try[A]): Unit = elem match {
+                    case Success(a) if fn(a) => super.push(elem)
+                    case _ => // do nothing
                 }
             }
             new ProducerImpl[A](proxy)
@@ -113,7 +115,7 @@ object Producer
                     publisher.unsubscribe(this)
                 }
             }
-            override def push(elem: A): Unit = subscribers.foreach(_.push(elem))
+            override def push(elem: Try[A]): Unit = subscribers.foreach(_.push(elem))
         }
     }
 }
@@ -132,7 +134,7 @@ object StdInTest
         Future {
             while(true){
                 val line = StdIn.readLine()
-                subscribers.foreach(_.push(line))
+                subscribers.foreach(_.push(Success(line)))
             }
         }(executorContext)
     }
@@ -170,7 +172,7 @@ object MonotonicallyIncreasePublisherTest
             var nextNumber = 1
             while(true){
                 val line = nextNumber.toString
-                subscribers.foreach(_.push(line))
+                subscribers.foreach(_.push(Success(line)))
                 nextNumber += 1
                 Thread.sleep(1000)
             }

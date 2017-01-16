@@ -10,7 +10,7 @@ import scala.collection.mutable
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.io.StdIn
-import scala.util.Success
+import scala.util.{Success, Try}
 
 trait FStream[A, B]{
     def read(timeout: Duration = null): Future[A]
@@ -93,7 +93,7 @@ object FStream
                 }
             }
             override def write(elem: D): Unit = endPoint.write(transIn(elem))
-            override def push(elem: C): Unit = subscribers.foreach(_.push(elem))
+            override def push(elem: Try[C]): Unit = subscribers.foreach(_.push(elem))
         }
 
     }
@@ -116,7 +116,7 @@ object FStreamStdInTest
         Future {
             while(true){
                 val line = StdIn.readLine()
-                subscribers.foreach(_.push(line))
+                subscribers.foreach(_.push(Success(line)))
             }
         }(executorContext)
     }
@@ -129,9 +129,9 @@ object FStreamStdInTest
         val even: Int => Boolean = i => i % 2 == 0 // filter
         val consumer: FConsumer[Int, String, Int] = FConsumer { stream =>
             for {
-                _ <- stream.write("Enter some number:")
+                _ <- stream.write("Enter some even number:")
                 a <- stream.read()
-                _ <- stream.write("Enter some number once again:")
+                _ <- stream.write("Enter some even number once again:")
                 b <- stream.read()
             } yield a + b
         }
@@ -158,7 +158,7 @@ object FStreamForkTest
             var nextNumber = 1
             while(true){
                 val line = nextNumber.toString
-                subscribers.foreach(_.push(line))
+                subscribers.foreach(_.push(Success(line)))
                 nextNumber += 1
                 Thread.sleep(1000)
             }
