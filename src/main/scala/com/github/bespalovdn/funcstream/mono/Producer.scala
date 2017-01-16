@@ -74,7 +74,9 @@ object Producer
                         val transformed: B = fn(elem)
                         subscriber.push(transformed)
                     }catch{
-                        case t: Throwable => logger.error("Failed to transform value: " + elem)
+                        case t: Throwable =>
+                            logger.error(s"Failed to transform value: [$elem]. Cause: [%s]" format t.getMessage)
+                            throw t
                     }
                 }
             }
