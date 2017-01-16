@@ -18,6 +18,7 @@ trait Producer[A] {
     def transform [B](fn: A => B): Producer[B]
     def filter(fn: A => Boolean): Producer[A]
     def fork(consumer: Producer[A] => Unit): Producer[A]
+    def addListener(listener: A => Unit): Producer[A]
 }
 
 object Producer
@@ -30,8 +31,10 @@ object Producer
     {
         private val available = mutable.Queue.empty[Try[A]]
         private val requested = mutable.Queue.empty[Promise[A]]
+        private val listeners = mutable.ArrayBuffer.empty[A => Unit]
 
         override def push(elem: Try[A]): Unit = {
+            elem.foreach(a => listeners.foreach(listener => listener(a)))
             if(requested.nonEmpty)
                 requested.dequeue().tryComplete(elem)
             else
@@ -99,6 +102,11 @@ object Producer
             val p2 = new ProducerImpl[A](new Proxy)
             consumer(p1)
             p2
+        }
+
+        override def addListener(listener: (A) => Unit): Producer[A] = {
+            listeners.synchronized{ listeners += listener }
+            this
         }
 
         private class Proxy extends Publisher[A] with Subscriber[A]{
