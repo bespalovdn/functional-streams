@@ -34,7 +34,7 @@ object Producer
         private val listeners = mutable.ArrayBuffer.empty[A => Unit]
 
         override def push(elem: Try[A]): Unit = {
-            elem.foreach(a => listeners.foreach(listener => listener(a)))
+            notifyListeneres(elem)
             if(requested.nonEmpty)
                 requested.dequeue().tryComplete(elem)
             else
@@ -73,14 +73,17 @@ object Producer
                         publisher.unsubscribe(this)
                     }
                 }
-                override def push(elem: Try[A]): Unit = subscribers.foreach{subscriber =>
-                    try{
-                        val transformed: Try[B] = elem.map(fn)
-                        subscriber.push(transformed)
-                    }catch{
-                        case t: Throwable =>
-                            logger.error(s"Failed to transform value: [$elem]. Cause: [%s]" format t.getMessage)
-                            throw t
+                override def push(elem: Try[A]): Unit = {
+                    notifyListeneres(elem)
+                    subscribers.foreach{subscriber =>
+                        try{
+                            val transformed: Try[B] = elem.map(fn)
+                            subscriber.push(transformed)
+                        }catch{
+                            case t: Throwable =>
+                                logger.error(s"Failed to transform value: [$elem]. Cause: [%s]" format t.getMessage)
+                                throw t
+                        }
                     }
                 }
             }
@@ -89,9 +92,12 @@ object Producer
 
         override def filter(fn: A => Boolean): Producer[A] = {
             val proxy = new Proxy{
-                override def push(elem: Try[A]): Unit = elem match {
-                    case Success(a) if fn(a) => super.push(elem)
-                    case _ => // do nothing
+                override def push(elem: Try[A]): Unit = {
+                    notifyListeneres(elem)
+                    elem match {
+                        case Success(a) if fn(a) => super.push(elem)
+                        case _ => // do nothing
+                    }
                 }
             }
             new ProducerImpl[A](proxy)
@@ -107,6 +113,10 @@ object Producer
         override def addListener(listener: (A) => Unit): Producer[A] = {
             listeners.synchronized{ listeners += listener }
             this
+        }
+
+        private def notifyListeneres(elem: Try[A]): Unit ={
+            elem.foreach(a => listeners.foreach(listener => listener(a)))
         }
 
         private class Proxy extends Publisher[A] with Subscriber[A]{
