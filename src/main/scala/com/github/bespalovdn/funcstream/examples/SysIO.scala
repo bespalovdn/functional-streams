@@ -3,6 +3,7 @@ package com.github.bespalovdn.funcstream.examples
 import java.util.Scanner
 
 import com.github.bespalovdn.funcstream._
+import com.github.bespalovdn.funcstream.examples.sip.SipProtocolException
 import com.github.bespalovdn.funcstream.ext.ClosableStreamImpl
 
 import scala.concurrent.duration.Duration
@@ -31,7 +32,7 @@ object SysIO extends SysIOTypes with FutureExtensions {
             }
             _ <- res match {
                 case "OK" => success()
-                case r => fail(s"Unexpected result: $r. Expected: OK")
+                case r => fail(new SipProtocolException(s"Unexpected result: $r. Expected: OK"))
             }
         } yield consume()
     }

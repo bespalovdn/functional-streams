@@ -1,8 +1,7 @@
 package com.github.bespalovdn.funcstream.examples.sipproxy
 
-import com.github.bespalovdn.funcstream.examples._
 import com.github.bespalovdn.funcstream.examples.sip.SipMessage._
-import com.github.bespalovdn.funcstream.examples.sip.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
+import com.github.bespalovdn.funcstream.examples.sip._
 import com.github.bespalovdn.funcstream.ext.TimeoutSupport
 import com.github.bespalovdn.funcstream.{FStream, _}
 
@@ -45,11 +44,11 @@ class HmpPartImpl(client: ClientPart)(endpoint: FStream[SipMessage, SipMessage])
 
     override def waitForHmpBye: Future[Unit] = hmpByeReceived.future
 
-    override def sendBye(): Future[Unit] = endpoint <=> FConsumer{ implicit stream => for {
+    override def sendBye(): Future[Unit] = endpoint <=> FConsumer{ implicit stream: FStream[SipMessage, SipMessage] => for {
             _ <- stream.write(factory.byeRequest())
             _ <- stream.read() >>= {
                 case r: SipResponse if isOk(r) => success(consume())
-                case r => fail("hmp bye: invalid response received: " + r)
+                case r => fail(new SipProtocolException("hmp bye: invalid response received: " + r))
             }
             _ <- {done.tryComplete(Success(())); success()}
         } yield consume ()
@@ -64,7 +63,7 @@ class HmpPartImpl(client: ClientPart)(endpoint: FStream[SipMessage, SipMessage])
             }
             r <- r match {
                 case r: SipResponse if isOk(r) => success(r)
-                case _ => fail("invite: Unexpected response: " + r)
+                case _ => fail(new SipProtocolException("invite: Unexpected response: " + r))
             }
             _ <- stream.write(factory.ackRequest(r))
         } yield consume(r.content.asInstanceOf[String])
@@ -85,7 +84,7 @@ class HmpPartImpl(client: ClientPart)(endpoint: FStream[SipMessage, SipMessage])
             _ <- stream.write(factory.keepaliveRequest(refresher = "uac"))
             _ <- stream.read(timeout = 10.seconds) >>= {
                 case r: SipResponse if isOk(r) => success()
-                case r => fail("Unexpected keepalive response: " + r)
+                case r => fail(new SipProtocolException("Unexpected keepalive response: " + r))
             }
             _ <- if (continue) keepalive(continue)(factory).apply(stream) else success()
         } yield consume()

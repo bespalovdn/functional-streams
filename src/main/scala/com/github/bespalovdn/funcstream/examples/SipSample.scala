@@ -1,7 +1,7 @@
 package com.github.bespalovdn.funcstream.examples
 
 import com.github.bespalovdn.funcstream.examples.sip.SipMessage._
-import com.github.bespalovdn.funcstream.examples.sip.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
+import com.github.bespalovdn.funcstream.examples.sip._
 import com.github.bespalovdn.funcstream.{FStream, _}
 
 object SipSample extends App
@@ -29,7 +29,7 @@ object SipClient extends SipSampleTypes with FutureExtensions
             }
             _ <- r match {
                 case r: SipResponse if isOk(r) => success()
-                case _ => fail("invite: Unexpected response: " + r)
+                case _ => fail(new SipProtocolException("invite: Unexpected response: " + r))
             }
         } yield consume()
     }
@@ -37,7 +37,7 @@ object SipClient extends SipSampleTypes with FutureExtensions
     def bye(implicit factory: SipMessageFactory): Consumer[Unit] = FConsumer { implicit stream =>
         stream.write(factory.byeRequest()) >> stream.read() >>= {
             case r: SipResponse if isOk(r) => success(consume())
-            case r => fail("bye: invalid response: " + r) //TODO: add retry logic
+            case r => fail(new SipProtocolException("bye: invalid response: " + r)) //TODO: add retry logic
         }
     }
 

@@ -1,9 +1,8 @@
 package com.github.bespalovdn.funcstream.examples.sipproxy
 
 import com.github.bespalovdn.funcstream._
-import com.github.bespalovdn.funcstream.examples._
 import com.github.bespalovdn.funcstream.examples.sip.SipMessage._
-import com.github.bespalovdn.funcstream.examples.sip.{SipMessage, SipMessageFactory, SipRequest, SipResponse}
+import com.github.bespalovdn.funcstream.examples.sip._
 
 import scala.concurrent.Future
 
@@ -32,7 +31,7 @@ class ClientPartImpl(endpoint: FStream[SipMessage, SipMessage], hmpPartFactory: 
                 _ <- stream.write(factory.byeRequest())
                 _ <- stream.read() >>= {
                     case r: SipResponse if isOk(r) => success(consume())
-                    case r => fail("hmp bye: invalid response received: " + r)
+                    case r => fail(new SipProtocolException("hmp bye: invalid response received: " + r))
                 }
             } yield consume()
         }
@@ -43,7 +42,7 @@ class ClientPartImpl(endpoint: FStream[SipMessage, SipMessage], hmpPartFactory: 
         for {
             r <- stream.read() >>= {
                 case r: SipRequest if isInvite(r) => success(r)
-                case r => fail("Unexpected request received: " + r)
+                case r => fail(new SipProtocolException("Unexpected request received: " + r))
             }
             _ <- stream.write(factory.tryingResponse(r))
             sdp <- success(r.content.asInstanceOf[String])
