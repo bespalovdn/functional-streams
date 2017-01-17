@@ -1,15 +1,11 @@
 package com.github.bespalovdn.funcstream.mono
 
-import java.util.concurrent.Executors
-
-import com.github.bespalovdn.funcstream.ext.FutureExtensions._
 import com.github.bespalovdn.funcstream.ext.TimeoutSupport
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, ExecutionContext, Future, Promise}
-import scala.io.StdIn
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Success, Try}
 
 trait Producer[A] {
@@ -142,93 +138,5 @@ object Producer
             }
             override def push(elem: Try[A]): Unit = subscribers.foreach(_.push(elem))
         }
-    }
-}
-
-////////////////////////////////////////////////////////////////
-object StdInTest
-{
-    class StdReader extends Publisher[String]
-    {
-        private val subscribers = mutable.ListBuffer.empty[Subscriber[String]]
-
-        override def subscribe(subscriber: Subscriber[String]): Unit = subscribers += subscriber
-        override def unsubscribe(subscriber: Subscriber[String]): Unit = subscribers -= subscriber
-
-        private val executorContext = ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
-        Future {
-            while(true){
-                val line = StdIn.readLine()
-                subscribers.foreach(_.push(Success(line)))
-            }
-        }(executorContext)
-    }
-
-    def apply(): Unit = {
-        import scala.concurrent.ExecutionContext.Implicits.global
-
-        val producer: Producer[String] = Producer(new StdReader)
-        val toInt: String => Int = _.toInt // transformer
-        val even: Int => Boolean = i => i % 2 == 0 // filter
-        val consumer: Consumer[Int, Int] = Consumer{
-            p => for {
-                a <- p.get()
-                b <- p.get()
-            } yield a + b
-        }
-
-        println("Input some numbers:")
-        val result: Future[Int] = producer.transform(toInt).filter(even).consume(consumer)
-        println("SUM OF EVENS IS: " + Await.result(result, Duration.Inf))
-    }
-}
-
-object MonotonicallyIncreasePublisherTest
-{
-    class Mono extends Publisher[String]
-    {
-        private val subscribers = mutable.ListBuffer.empty[Subscriber[String]]
-
-        override def subscribe(subscriber: Subscriber[String]): Unit = subscribers += subscriber
-        override def unsubscribe(subscriber: Subscriber[String]): Unit = subscribers -= subscriber
-
-        private val executorContext = ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
-        Future {
-            var nextNumber = 1
-            while(true){
-                val line = nextNumber.toString
-                subscribers.foreach(_.push(Success(line)))
-                nextNumber += 1
-                Thread.sleep(1000)
-            }
-        }(executorContext)
-    }
-
-    def apply(): Unit ={
-        import scala.concurrent.ExecutionContext.Implicits.global
-
-        val producer: Producer[String] = Producer(new Mono)
-
-        def consumer(name: String, nTimes: Int): Consumer[String, Unit] = Consumer{
-            p => {
-                if(nTimes > 0) {
-                    p.get() >>= { str =>
-                        println(s"$name: $str")
-                        consumer(name, nTimes - 1).apply(p)
-                    }
-                } else {
-                    Future.successful(())
-                }
-            }
-        }
-
-        println("Producer's output:")
-        var result: Future[Unit] = producer.fork(p => p.consume(consumer("B", 3) >> consumer("C", 3))) consume consumer("A", 10)
-        Await.ready(result, Duration.Inf)
-        Thread.sleep(3000)
-        result = producer.fork(p => p.consume(consumer("B", 3) >> consumer("C", 3))) consume consumer("A", 10)
-        Await.ready(result, Duration.Inf)
-
-        println("DONE")
     }
 }

@@ -1,16 +1,12 @@
 package com.github.bespalovdn.funcstream
 
-import java.util.concurrent.Executors
-
-import com.github.bespalovdn.funcstream.ext.FutureExtensions._
 import com.github.bespalovdn.funcstream.mono.Producer.ProducerImpl
 import com.github.bespalovdn.funcstream.mono.{Consumer, Producer, Publisher, Subscriber}
 
 import scala.collection.mutable
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.io.StdIn
-import scala.util.{Success, Try}
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Try
 
 trait FStream[A, B]{
     def read(timeout: Duration = null): Future[A]
@@ -86,100 +82,5 @@ object FStream
             override def push(elem: Try[C]): Unit = subscribers.synchronized{ subscribers.foreach(_.push(elem)) }
         }
 
-    }
-}
-
-////////////////////////////////////////////////////////////////
-object FStreamStdInTest
-{
-    class StdEndpoint extends EndPoint[String, String]{
-        private val executorContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(2))
-        private val subscribers = mutable.ListBuffer.empty[Subscriber[String]]
-
-        override def subscribe(subscriber: Subscriber[String]): Unit = subscribers += subscriber
-        override def unsubscribe(subscriber: Subscriber[String]): Unit = subscribers -= subscriber
-
-        override def write(elem: String): Unit = Future {
-            println(elem)
-        }(executorContext)
-
-        Future {
-            while(true){
-                val line = StdIn.readLine()
-                subscribers.foreach(_.push(Success(line)))
-            }
-        }(executorContext)
-    }
-
-    def apply(): Unit = {
-        import scala.concurrent.ExecutionContext.Implicits.global
-
-        val stream: FStream[String, String] = FStream(new StdEndpoint)
-        val toInt: String => Int = _.toInt // transformer
-        val even: Int => Boolean = i => i % 2 == 0 // filter
-        val consumer: FConsumer[Int, String, Int] = FConsumer { stream =>
-            for {
-                _ <- stream.write("Enter some even number:")
-                a <- stream.read()
-                _ <- stream.write("Enter some even number once again:")
-                b <- stream.read()
-            } yield a + b
-        }
-        val result: Future[Int] = stream.transform(toInt, identity[String]).filter(even).consume(consumer)
-        println("SUM OF EVENS IS: " + Await.result(result, Duration.Inf))
-    }
-}
-
-object FStreamForkTest
-{
-    class Mono extends EndPoint[String, String]
-    {
-        private val subscribers = mutable.ListBuffer.empty[Subscriber[String]]
-
-        override def subscribe(subscriber: Subscriber[String]): Unit = subscribers += subscriber
-        override def unsubscribe(subscriber: Subscriber[String]): Unit = subscribers -= subscriber
-
-        override def write(elem: String): Unit = Future {
-            println(elem)
-        }(executorContext)
-
-        private val executorContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
-        Future {
-            var nextNumber = 1
-            while(true){
-                val line = nextNumber.toString
-                subscribers.foreach(_.push(Success(line)))
-                nextNumber += 1
-                Thread.sleep(1000)
-            }
-        }(executorContext)
-    }
-
-    def apply(): Unit ={
-        import scala.concurrent.ExecutionContext.Implicits.global
-
-        val stream: FStream[String, String] = FStream(new Mono)
-
-        def consumer(name: String, nTimes: Int): FConsumer[String, String, Unit] = FConsumer{
-            stream => {
-                if(nTimes > 0) {
-                    stream.read() >>= { str =>
-                        stream.write(s"$name: $str")
-                        consumer(name, nTimes - 1).apply(stream)
-                    }
-                } else {
-                    Future.successful(())
-                }
-            }
-        }
-
-        println("Producer's output:")
-        var result: Future[Unit] = stream.fork(p => p.consume(consumer("B", 3) >> consumer("C", 3))) consume consumer("A", 10)
-        Await.ready(result, Duration.Inf)
-        Thread.sleep(3000)
-        result = stream.fork(p => p.consume(consumer("B", 3) >> consumer("C", 3))) consume consumer("A", 10)
-        Await.ready(result, Duration.Inf)
-
-        println("DONE")
     }
 }
