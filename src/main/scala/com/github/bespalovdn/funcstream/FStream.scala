@@ -34,7 +34,7 @@ object FStream
         override def read(timeout: Duration): Future[A] = reader.get(timeout)
 
         override def write(elem: B): Future[Unit] = {
-            endPoint.write(elem)
+            endPoint.synchronized{ endPoint.write(elem) }
             success()
         }
 
@@ -70,20 +70,20 @@ object FStream
 
         private class ProxyEndPoint[C, D](publisher: Publisher[C], transIn: D => B) extends EndPoint[C, D] with Subscriber[C] {
             private val subscribers = mutable.ListBuffer.empty[Subscriber[C]]
-            override def subscribe(subscriber: Subscriber[C]): Unit = {
+            override def subscribe(subscriber: Subscriber[C]): Unit = subscribers.synchronized{
                 if(subscribers.isEmpty){
                     publisher.subscribe(this)
                 }
                 subscribers += subscriber
             }
-            override def unsubscribe(subscriber: Subscriber[C]): Unit = {
+            override def unsubscribe(subscriber: Subscriber[C]): Unit = subscribers.synchronized{
                 subscribers -= subscriber
                 if(subscribers.isEmpty){
                     publisher.unsubscribe(this)
                 }
             }
-            override def write(elem: D): Unit = endPoint.write(transIn(elem))
-            override def push(elem: Try[C]): Unit = subscribers.foreach(_.push(elem))
+            override def write(elem: D): Unit = endPoint.synchronized{ endPoint.write(transIn(elem)) }
+            override def push(elem: Try[C]): Unit = subscribers.synchronized{ subscribers.foreach(_.push(elem)) }
         }
 
     }
