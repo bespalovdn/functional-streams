@@ -40,7 +40,7 @@ object FStream
 
         override def <=>[C](c: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C] = {
             val consumer = Consumer[A, C] { _ => c.apply(this) }
-            reader <=> consumer
+            reader consume consumer
         }
 
         override def transform [C, D](transOut: A => C, transIn: D => B): FStream[C, D] = {

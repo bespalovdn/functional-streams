@@ -11,10 +11,9 @@ import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.io.StdIn
 import scala.util.{Success, Try}
 
-////////////////////////////////////////////////////////////////
 trait Producer[A] {
     def get(timeout: Duration = null): Future[A]
-    def <=> [B](c: Consumer[A, B])(implicit ec: ExecutionContext): Future[B]
+    def consume [B](c: Consumer[A, B])(implicit ec: ExecutionContext): Future[B]
     def transform [B](fn: A => B): Producer[B]
     def filter(fn: A => Boolean): Producer[A]
     def fork(consumer: Producer[A] => Unit): Producer[A]
@@ -51,7 +50,7 @@ object Producer
             }
         }
 
-        override def <=> [B](c: Consumer[A, B])(implicit ec: ExecutionContext): Future[B] = {
+        override def consume [B](c: Consumer[A, B])(implicit ec: ExecutionContext): Future[B] = {
             publisher.subscribe(this)
             val f = c.apply(this)
             f.onComplete(_ => publisher.unsubscribe(this))
@@ -171,7 +170,7 @@ object StdInTest
         }
 
         println("Input some numbers:")
-        val result: Future[Int] = producer.transform(toInt).filter(even) <=> consumer
+        val result: Future[Int] = producer.transform(toInt).filter(even).consume(consumer)
         println("SUM OF EVENS IS: " + Await.result(result, Duration.Inf))
     }
 }
@@ -216,10 +215,10 @@ object MonotonicallyIncreasePublisherTest
         }
 
         println("Producer's output:")
-        var result: Future[Unit] = producer.fork(p => p <=> (consumer("B", 3) >> consumer("C", 3))) <=> consumer("A", 10)
+        var result: Future[Unit] = producer.fork(p => p.consume(consumer("B", 3) >> consumer("C", 3))) consume consumer("A", 10)
         Await.ready(result, Duration.Inf)
         Thread.sleep(3000)
-        result = producer.fork(p => p <=> (consumer("B", 3) >> consumer("C", 3))) <=> consumer("A", 10)
+        result = producer.fork(p => p.consume(consumer("B", 3) >> consumer("C", 3))) consume consumer("A", 10)
         Await.ready(result, Duration.Inf)
 
         println("DONE")
