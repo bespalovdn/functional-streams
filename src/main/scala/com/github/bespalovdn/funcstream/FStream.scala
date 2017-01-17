@@ -15,7 +15,7 @@ import scala.util.{Success, Try}
 trait FStream[A, B]{
     def read(timeout: Duration = null): Future[A]
     def write(elem: B): Future[Unit]
-    def <=> [C](c: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C]
+    def consume [C](c: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C]
     def transform [C, D](transOut: A => C, transIn: D => B): FStream[C, D]
     def filter(fn: A => Boolean): FStream[A, B]
     def fork(consumer: FStream[A, B] => Unit): FStream[A, B]
@@ -38,7 +38,7 @@ object FStream
             success()
         }
 
-        override def <=>[C](c: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C] = {
+        override def consume[C](c: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C] = {
             val consumer = Consumer[A, C] { _ => c.apply(this) }
             reader consume consumer
         }
@@ -125,7 +125,7 @@ object FStreamStdInTest
                 b <- stream.read()
             } yield a + b
         }
-        val result: Future[Int] = stream.transform(toInt, identity[String]).filter(even) <=> consumer
+        val result: Future[Int] = stream.transform(toInt, identity[String]).filter(even).consume(consumer)
         println("SUM OF EVENS IS: " + Await.result(result, Duration.Inf))
     }
 }
@@ -174,10 +174,10 @@ object FStreamForkTest
         }
 
         println("Producer's output:")
-        var result: Future[Unit] = stream.fork(p => p <=> (consumer("B", 3) >> consumer("C", 3))) <=> consumer("A", 10)
+        var result: Future[Unit] = stream.fork(p => p.consume(consumer("B", 3) >> consumer("C", 3))) consume consumer("A", 10)
         Await.ready(result, Duration.Inf)
         Thread.sleep(3000)
-        result = stream.fork(p => p <=> (consumer("B", 3) >> consumer("C", 3))) <=> consumer("A", 10)
+        result = stream.fork(p => p.consume(consumer("B", 3) >> consumer("C", 3))) consume consumer("A", 10)
         Await.ready(result, Duration.Inf)
 
         println("DONE")
