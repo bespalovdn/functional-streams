@@ -14,6 +14,7 @@ trait FStream[A, B]{
     def consume [C](consumer: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C]
     def transform [C, D](down: A => C, up: D => B): FStream[C, D]
     def filter(fn: A => Boolean): FStream[A, B]
+    def filterNot(fn: A => Boolean): FStream[A, B]
     def fork(consumer: FStream[A, B] => Unit): FStream[A, B]
     def addListener(listener: A => Unit): FStream[A, B]
 }
@@ -48,6 +49,8 @@ object FStream
             val filtered = reader.filter(fn)
             producer2stream(filtered, identity)
         }
+
+        override def filterNot(fn: A => Boolean): FStream[A, B] = filter(a => !fn(a))
 
         override def fork(consumer: FStream[A, B] => Unit): FStream[A, B] = {
             producer2stream(reader.fork(p => consumer(producer2stream(p, identity))), identity)

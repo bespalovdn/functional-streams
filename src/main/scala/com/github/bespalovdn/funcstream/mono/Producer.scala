@@ -13,6 +13,7 @@ trait Producer[A] {
     def consume [B](c: Consumer[A, B])(implicit ec: ExecutionContext): Future[B]
     def transform [B](fn: A => B): Producer[B]
     def filter(fn: A => Boolean): Producer[A]
+    def filterNot(fn: A => Boolean): Producer[A]
     def fork(consumer: Producer[A] => Unit): Producer[A]
     def addListener(listener: A => Unit): Producer[A]
 }
@@ -109,6 +110,8 @@ object Producer
             }
             new ProducerImpl[A](proxy)
         }
+
+        override def filterNot(fn: A => Boolean): Producer[A] = filter(a => !fn(a))
 
         override def fork(consumer: Producer[A] => Unit): Producer[A] = {
             val p1 = new ProducerImpl[A](new Proxy)
