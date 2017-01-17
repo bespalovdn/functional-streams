@@ -3,6 +3,7 @@ package com.github.bespalovdn.funcstream.mono
 import java.util.concurrent.Executors
 
 import com.github.bespalovdn.funcstream.ext.FutureExtensions._
+import com.github.bespalovdn.funcstream.ext.TimeoutSupport
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
@@ -26,7 +27,10 @@ object Producer
 
     private lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-    private[funcstream] class ProducerImpl[A](val publisher: Publisher[A]) extends Producer[A] with Subscriber[A]
+    private[funcstream] class ProducerImpl[A](val publisher: Publisher[A])
+        extends Producer[A]
+        with Subscriber[A]
+        with TimeoutSupport
     {
         private object elements {
             val available = mutable.Queue.empty[Try[A]]
@@ -50,7 +54,7 @@ object Producer
             } else{
                 val p = Promise[A]
                 elements.requested.enqueue(p)
-                p.future
+                withTimeout(timeout)(p.future)
             }
         }
 

@@ -15,7 +15,7 @@ import scala.util.{Success, Try}
 trait FStream[A, B]{
     def read(timeout: Duration = null): Future[A]
     def write(elem: B): Future[Unit]
-    def consume [C](c: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C]
+    def consume [C](consumer: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C]
     def transform [C, D](transOut: A => C, transIn: D => B): FStream[C, D]
     def filter(fn: A => Boolean): FStream[A, B]
     def fork(consumer: FStream[A, B] => Unit): FStream[A, B]

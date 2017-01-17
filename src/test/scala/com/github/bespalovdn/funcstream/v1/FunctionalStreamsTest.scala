@@ -23,7 +23,7 @@ class FunctionalStreamsTest extends FlatSpec
 
     "The test" should "check if read with timeout works" in {
         val endpoint = new FStreamV1[Int, Int] with TimeoutSupport{
-            override def read(timeout: Duration): Future[Int] = withTimeoutDo(timeout)(Promise[Int].future) // never completes
+            override def read(timeout: Duration): Future[Int] = withTimeout(timeout)(Promise[Int].future) // never completes
             override def write(elem: Int): Future[Unit] = Future.successful(())
         }
 

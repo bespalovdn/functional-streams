@@ -9,7 +9,7 @@ import scala.concurrent.{Future, Promise}
 
 trait TimeoutSupport extends FutureExtensions
 {
-    def withTimeoutDo[A](timeout: Duration)(fn: => Future[A]): Future[A] = {
+    def withTimeout[A](timeout: Duration)(fn: => Future[A]): Future[A] = {
         if(timeout == null) fn
         else {
             val p = Promise[A]
