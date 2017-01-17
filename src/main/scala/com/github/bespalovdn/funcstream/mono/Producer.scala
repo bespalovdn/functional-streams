@@ -37,10 +37,14 @@ object Producer
         override def push(elem: Try[A]): Unit = {
             notifyListeneres(elem)
             elements.synchronized {
-                if (elements.requested.nonEmpty)
-                    elements.requested.dequeue().tryComplete(elem)
-                else
+                if (elements.requested.nonEmpty) {
+                    val completed = elements.requested.dequeue().tryComplete(elem)
+                    if(!completed) {
+                        push(elem) // to handle timed out requests
+                    }
+                }else {
                     elements.available.enqueue(elem)
+                }
             }
         }
 
