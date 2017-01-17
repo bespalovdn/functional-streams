@@ -9,6 +9,7 @@ import org.scalatest.junit.JUnitRunner
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.language.reflectiveCalls
 import scala.util.Failure
 
 @RunWith(classOf[JUnitRunner])

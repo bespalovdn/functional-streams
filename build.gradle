@@ -6,8 +6,9 @@ group = "com.github.bespalovdn"
 archivesBaseName = "functional-streams_2.12"
 version = '1.0.0.17-SNAPSHOT'
 
-compileScala {
-    options.compilerArgs << "-deprecation"
+tasks.withType(ScalaCompile) {
+    // Enable Scala warnings output
+    scalaCompileOptions.additionalParameters = ["-deprecation", "-feature"]
 }
 
 repositories {
