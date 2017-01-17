@@ -12,7 +12,7 @@ trait FStream[A, B]{
     def read(timeout: Duration = null): Future[A]
     def write(elem: B): Future[Unit]
     def consume [C](consumer: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C]
-    def transform [C, D](transOut: A => C, transIn: D => B): FStream[C, D]
+    def transform [C, D](down: A => C, up: D => B): FStream[C, D]
     def filter(fn: A => Boolean): FStream[A, B]
     def fork(consumer: FStream[A, B] => Unit): FStream[A, B]
     def addListener(listener: A => Unit): FStream[A, B]
@@ -39,9 +39,9 @@ object FStream
             reader consume consumer
         }
 
-        override def transform [C, D](transOut: A => C, transIn: D => B): FStream[C, D] = {
-            val transformed: Producer[C] = reader.transform(transOut)
-            producer2stream(transformed, transIn)
+        override def transform [C, D](down: A => C, up: D => B): FStream[C, D] = {
+            val transformed: Producer[C] = reader.transform(down)
+            producer2stream(transformed, up)
         }
 
         override def filter(fn: (A) => Boolean): FStream[A, B] = {
@@ -58,13 +58,13 @@ object FStream
             this
         }
 
-        private def producer2stream[C, D](producer: Producer[C], transIn: D => B): FStream[C, D] = {
+        private def producer2stream[C, D](producer: Producer[C], transformUp: D => B): FStream[C, D] = {
             def getPublisher(producer: Producer[C]): Publisher[C] = producer.asInstanceOf[ProducerImpl[C]].publisher
-            def toStream(producer: Producer[C]): FStream[C, D] = new FStreamImpl[C, D](new ProxyEndPoint(getPublisher(producer), transIn))
+            def toStream(producer: Producer[C]): FStream[C, D] = new FStreamImpl[C, D](new ProxyEndPoint(getPublisher(producer), transformUp))
             toStream(producer)
         }
 
-        private class ProxyEndPoint[C, D](publisher: Publisher[C], transIn: D => B) extends EndPoint[C, D] with Subscriber[C] {
+        private class ProxyEndPoint[C, D](publisher: Publisher[C], transformUp: D => B) extends EndPoint[C, D] with Subscriber[C] {
             private val subscribers = mutable.ListBuffer.empty[Subscriber[C]]
             override def subscribe(subscriber: Subscriber[C]): Unit = subscribers.synchronized{
                 if(subscribers.isEmpty){
@@ -78,7 +78,7 @@ object FStream
                     publisher.unsubscribe(this)
                 }
             }
-            override def write(elem: D): Unit = endPoint.synchronized{ endPoint.write(transIn(elem)) }
+            override def write(elem: D): Unit = endPoint.synchronized{ endPoint.write(transformUp(elem)) }
             override def push(elem: Try[C]): Unit = subscribers.synchronized{ subscribers.foreach(_.push(elem)) }
         }
 
