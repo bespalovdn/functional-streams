@@ -28,24 +28,28 @@ object Producer
 
     private[funcstream] class ProducerImpl[A](val publisher: Publisher[A]) extends Producer[A] with Subscriber[A]
     {
-        private val available = mutable.Queue.empty[Try[A]]
-        private val requested = mutable.Queue.empty[Promise[A]]
+        private object elements {
+            val available = mutable.Queue.empty[Try[A]]
+            val requested = mutable.Queue.empty[Promise[A]]
+        }
         private val listeners = mutable.ArrayBuffer.empty[A => Unit]
 
         override def push(elem: Try[A]): Unit = {
             notifyListeneres(elem)
-            if(requested.nonEmpty)
-                requested.dequeue().tryComplete(elem)
-            else
-                available.enqueue(elem)
+            elements.synchronized {
+                if (elements.requested.nonEmpty)
+                    elements.requested.dequeue().tryComplete(elem)
+                else
+                    elements.available.enqueue(elem)
+            }
         }
 
-        override def get(timeout: Duration = null): Future[A] = {
-            if(available.nonEmpty) {
-                Future.fromTry(available.dequeue())
+        override def get(timeout: Duration = null): Future[A] = elements.synchronized {
+            if(elements.available.nonEmpty) {
+                Future.fromTry(elements.available.dequeue())
             } else{
                 val p = Promise[A]
-                requested.enqueue(p)
+                elements.requested.enqueue(p)
                 p.future
             }
         }
@@ -115,7 +119,7 @@ object Producer
         }
 
         private def notifyListeneres(elem: Try[A]): Unit ={
-            elem.foreach(a => listeners.foreach(listener => listener(a)))
+            elem.foreach(a => listeners.synchronized{ listeners.foreach(listener => listener(a)) })
         }
 
         private class Proxy extends Publisher[A] with Subscriber[A]{
