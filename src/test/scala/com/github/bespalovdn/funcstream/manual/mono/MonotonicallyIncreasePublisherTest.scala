@@ -50,10 +50,16 @@ object MonotonicallyIncreasePublisherTest extends FutureExtensions
         }
 
         println("Producer's output:")
-        var result: Future[Unit] = producer.fork(p => p.consume(consumer("B", 3) >> consumer("C", 3))) consume consumer("A", 10)
+        var result: Future[Unit] = {
+            producer.fork().consume(consumer("B", 3) >> consumer("C", 3))
+            producer.fork().consume(consumer("A", 10))
+        }
         Await.ready(result, Duration.Inf)
         Thread.sleep(3000)
-        result = producer.fork(p => p.consume(consumer("B", 3) >> consumer("C", 3))) consume consumer("A", 10)
+        result = {
+            producer.fork().consume(consumer("B", 3) >> consumer("C", 3))
+            producer.fork().consume(consumer("A", 10))
+        }
         Await.ready(result, Duration.Inf)
 
         println("DONE")

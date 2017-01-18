@@ -14,7 +14,7 @@ trait Producer[A] {
     def transform [B](fn: A => B): Producer[B]
     def filter(fn: A => Boolean): Producer[A]
     def filterNot(fn: A => Boolean): Producer[A]
-    def fork(consumer: Producer[A] => Unit): Producer[A]
+    def fork(): Producer[A]
     def addListener(listener: A => Unit): Producer[A]
 }
 
@@ -113,12 +113,7 @@ object Producer
 
         override def filterNot(fn: A => Boolean): Producer[A] = filter(a => !fn(a))
 
-        override def fork(consumer: Producer[A] => Unit): Producer[A] = {
-            val p1 = new ProducerImpl[A](new Proxy)
-            val p2 = new ProducerImpl[A](new Proxy)
-            consumer(p1)
-            p2
-        }
+        override def fork(): Producer[A] = new ProducerImpl[A](new Proxy)
 
         override def addListener(listener: (A) => Unit): Producer[A] = {
             listeners.synchronized{ listeners += listener }

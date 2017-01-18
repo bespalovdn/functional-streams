@@ -55,10 +55,16 @@ object FStreamForkTest extends FutureExtensions
         }
 
         println("Producer's output:")
-        var result: Future[Unit] = stream.fork(p => p.consume(consumer("B", 3) >> consumer("C", 3))) consume consumer("A", 10)
+        var result: Future[Unit] = {
+            stream.fork().consume(consumer("B", 3) >> consumer("C", 3))
+            stream.fork().consume(consumer("A", 10))
+        }
         Await.ready(result, Duration.Inf)
         Thread.sleep(3000)
-        result = stream.fork(p => p.consume(consumer("B", 3) >> consumer("C", 3))) consume consumer("A", 10)
+        result = {
+            stream.fork().consume(consumer("B", 3) >> consumer("C", 3))
+            stream.fork().consume(consumer("A", 10))
+        }
         Await.ready(result, Duration.Inf)
 
         println("DONE")
