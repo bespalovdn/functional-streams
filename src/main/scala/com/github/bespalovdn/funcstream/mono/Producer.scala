@@ -16,6 +16,8 @@ trait Producer[A] {
     def filterNot(fn: A => Boolean): Producer[A]
     def fork(): Producer[A]
     def addListener(listener: A => Unit): Producer[A]
+
+    def ==> [B](c: Consumer[A, B])(implicit ec: ExecutionContext): Future[B] = consume(c)
 }
 
 object Producer

@@ -17,6 +17,8 @@ trait FStream[A, B]{
     def filterNot(fn: A => Boolean): FStream[A, B]
     def fork(): FStream[A, B]
     def addListener(listener: A => Unit): FStream[A, B]
+
+    def <=> [C](consumer: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C] = consume(consumer)
 }
 
 object FStream
