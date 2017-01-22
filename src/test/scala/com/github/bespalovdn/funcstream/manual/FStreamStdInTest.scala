@@ -13,7 +13,7 @@ import scala.util.Success
 
 object FStreamStdInTest
 {
-    class StdEndpoint extends EndPoint[String, String]{
+    class StdEndpoint extends Connection[String, String]{
         private val executorContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(2))
         private val subscribers = mutable.ListBuffer.empty[Subscriber[String]]
 

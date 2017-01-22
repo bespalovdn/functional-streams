@@ -24,7 +24,7 @@ class FunctionalStreamsTest extends FlatSpec
     implicit def executionContext: ExecutionContext = scala.concurrent.ExecutionContext.global
 
     "The test" should "check if read with timeout works" in {
-        val endpoint = new EndPoint[Int, Int] with TimeoutSupport{
+        val endpoint = new Connection[Int, Int] with TimeoutSupport{
             override def write(elem: Int): Unit = {}
             override def subscribe(subscriber: Subscriber[Int]): Unit = {} // do nothing since it not supposed to produce elems
             override def unsubscribe(subscriber: Subscriber[Int]): Unit = {} // do nothing since it not supposed to produce elems

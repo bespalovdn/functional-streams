@@ -23,9 +23,9 @@ trait FStream[A, B]{
 
 object FStream
 {
-    def apply[A, B](endPoint: EndPoint[A, B]): FStream[A, B] = new FStreamImpl[A, B](endPoint)
+    def apply[A, B](endPoint: Connection[A, B]): FStream[A, B] = new FStreamImpl[A, B](endPoint)
 
-    private class FStreamImpl[A, B](endPoint: EndPoint[A, B])
+    private class FStreamImpl[A, B](endPoint: Connection[A, B])
         extends FStream[A, B]
     {
         private val reader: Producer[A] = Producer(endPoint)
@@ -67,7 +67,7 @@ object FStream
             toStream(producer)
         }
 
-        private class ProxyEndPoint[C, D](publisher: Publisher[C], transformUp: D => B) extends EndPoint[C, D] with Subscriber[C] {
+        private class ProxyEndPoint[C, D](publisher: Publisher[C], transformUp: D => B) extends Connection[C, D] with Subscriber[C] {
             private val subscribers = mutable.ListBuffer.empty[Subscriber[C]]
             override def subscribe(subscriber: Subscriber[C]): Unit = subscribers.synchronized{
                 if(subscribers.isEmpty){

@@ -13,7 +13,7 @@ import scala.util.Success
 
 object FStreamForkTest extends FutureExtensions
 {
-    class Mono extends EndPoint[String, String]
+    class Mono extends Connection[String, String]
     {
         private val subscribers = mutable.ListBuffer.empty[Subscriber[String]]
 
