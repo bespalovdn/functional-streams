@@ -71,13 +71,13 @@ object Producer
         override def transform [B](fn: A => B): Producer[B] = {
             val proxy = new Publisher[B] with Subscriber[A]{
                 private val subscribers = mutable.ListBuffer.empty[Subscriber[B]]
-                override def subscribe(subscriber: Subscriber[B]): Unit = {
+                override def subscribe(subscriber: Subscriber[B]): Unit = subscribers.synchronized {
                     if(subscribers.isEmpty){
                         publisher.subscribe(this)
                     }
                     subscribers += subscriber
                 }
-                override def unsubscribe(subscriber: Subscriber[B]): Unit = {
+                override def unsubscribe(subscriber: Subscriber[B]): Unit = subscribers.synchronized {
                     subscribers -= subscriber
                     if(subscribers.isEmpty){
                         publisher.unsubscribe(this)
@@ -85,14 +85,16 @@ object Producer
                 }
                 override def push(elem: Try[A]): Unit = {
                     notifyListeneres(elem)
-                    subscribers.foreach{subscriber =>
-                        try{
-                            val transformed: Try[B] = elem.map(fn)
-                            subscriber.push(transformed)
-                        }catch{
-                            case t: Throwable =>
-                                logger.error(s"Failed to transform value: [$elem]. Cause: [%s]" format t.getMessage)
-                                throw t
+                    subscribers.synchronized {
+                        subscribers.foreach{subscriber =>
+                            try{
+                                val transformed: Try[B] = elem.map(fn)
+                                subscriber.push(transformed)
+                            }catch{
+                                case t: Throwable =>
+                                    logger.error(s"Failed to transform value: [$elem]. Cause: [%s]" format t.getMessage)
+                                    throw t
+                            }
                         }
                     }
                 }
@@ -128,19 +130,19 @@ object Producer
 
         private class Proxy extends Publisher[A] with Subscriber[A]{
             private val subscribers = mutable.ListBuffer.empty[Subscriber[A]]
-            override def subscribe(subscriber: Subscriber[A]): Unit = {
+            override def subscribe(subscriber: Subscriber[A]): Unit = subscribers.synchronized {
                 if(subscribers.isEmpty){
                     publisher.subscribe(this)
                 }
                 subscribers += subscriber
             }
-            override def unsubscribe(subscriber: Subscriber[A]): Unit = {
+            override def unsubscribe(subscriber: Subscriber[A]): Unit = subscribers.synchronized {
                 subscribers -= subscriber
                 if(subscribers.isEmpty){
                     publisher.unsubscribe(this)
                 }
             }
-            override def push(elem: Try[A]): Unit = subscribers.foreach(_.push(elem))
+            override def push(elem: Try[A]): Unit = subscribers.synchronized{ subscribers.foreach(_.push(elem)) }
         }
     }
 }
