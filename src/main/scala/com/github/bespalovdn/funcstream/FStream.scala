@@ -23,17 +23,17 @@ trait FStream[A, B]{
 
 object FStream
 {
-    def apply[A, B](endPoint: Connection[A, B]): FStream[A, B] = new FStreamImpl[A, B](endPoint)
+    def apply[A, B](connection: Connection[A, B]): FStream[A, B] = new FStreamImpl[A, B](connection)
 
-    private class FStreamImpl[A, B](endPoint: Connection[A, B])
+    private class FStreamImpl[A, B](connection: Connection[A, B])
         extends FStream[A, B]
     {
-        private val reader: Producer[A] = Producer(endPoint)
+        private val reader: Producer[A] = Producer(connection)
 
         override def read(timeout: Duration): Future[A] = reader.get(timeout)
 
         override def write(elem: B): Future[Unit] = {
-            endPoint.synchronized{ endPoint.write(elem) }
+            connection.synchronized{ connection.write(elem) }
             success()
         }
 
@@ -81,7 +81,7 @@ object FStream
                     publisher.unsubscribe(this)
                 }
             }
-            override def write(elem: D): Unit = endPoint.synchronized{ endPoint.write(transformUp(elem)) }
+            override def write(elem: D): Unit = connection.synchronized{ connection.write(transformUp(elem)) }
             override def push(elem: Try[C]): Unit = subscribers.synchronized{ subscribers.foreach(_.push(elem)) }
         }
 

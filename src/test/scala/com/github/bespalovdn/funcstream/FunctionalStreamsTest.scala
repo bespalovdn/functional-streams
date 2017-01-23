@@ -24,7 +24,7 @@ class FunctionalStreamsTest extends FlatSpec
     implicit def executionContext: ExecutionContext = scala.concurrent.ExecutionContext.global
 
     "The test" should "check if read with timeout works" in {
-        val endpoint = new Connection[Int, Int] with TimeoutSupport{
+        val connection = new Connection[Int, Int] with TimeoutSupport{
             override def write(elem: Int): Unit = {}
             override def subscribe(subscriber: Subscriber[Int]): Unit = {} // do nothing since it not supposed to produce elems
             override def unsubscribe(subscriber: Subscriber[Int]): Unit = {} // do nothing since it not supposed to produce elems
@@ -34,7 +34,7 @@ class FunctionalStreamsTest extends FlatSpec
             stream.read(timeout = 100.millisecond) >> success()
         }
 
-        val result: Future[Unit] = FStream(endpoint) consume consumer
+        val result: Future[Unit] = FStream(connection) consume consumer
         // check if it's not complete instantly:
         result.value should be (None)
         // wait for a while (more than timeout in consumer) and check if result completed with TimeoutException:
@@ -45,7 +45,7 @@ class FunctionalStreamsTest extends FlatSpec
     }
 
 //    it should "check if piping functionality works" in {
-//        val endpoint = new FStreamV1[Int, Int] {
+//        val connection = new FStreamV1[Int, Int] {
 //            var lastWrittenElem: Int = 0
 //            override def read(timeout: Duration): Future[Int] = success(lastWrittenElem)
 //            override def write(elem: Int): Future[Unit] = {
@@ -61,16 +61,16 @@ class FunctionalStreamsTest extends FlatSpec
 //                i <- stream.read()
 //                _ <- {i should be (0); success()}
 //                _ <- stream.write(1)
-//                _ <- {endpoint.lastWrittenElem should be (2); success()}
+//                _ <- {connection.lastWrittenElem should be (2); success()}
 //                i <- stream.read()
 //                _ <- {i should be (4); success()}
 //            } yield consume()
 //        }
-//        FStreamConnector(endpoint) <=> twice <=> consumer
+//        FStreamConnector(connection) <=> twice <=> consumer
 //    }
 
 //    it should "check if stream forking works" in {
-//        val endpoint = new FStreamV1[Int, Int] {
+//        val connection = new FStreamV1[Int, Int] {
 //            private var _readCount: Int = 0
 //            private val readValue: Iterator[Int] = Stream.from(1).iterator
 //
@@ -96,13 +96,13 @@ class FunctionalStreamsTest extends FlatSpec
 //            success(consume())
 //        }
 //
-//        FStreamConnector(endpoint) <=> {
+//        FStreamConnector(connection) <=> {
 //            check{
-//                endpoint.readCount should be (0)
+//                connection.readCount should be (0)
 //            } >> echoServer >> check {
-//                endpoint.readCount should be (1)
+//                connection.readCount should be (1)
 //            } >> FConsumerV1.fork(echoServer) >> echoServer >> check {
-//                endpoint.readCount should be (3)
+//                connection.readCount should be (3)
 //            }
 //        }
 //    }
