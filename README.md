@@ -22,3 +22,33 @@ asynchronously, by using netty- future listeners. This is great library, but
 callback-style code quickly becomes hard to understand, and hard to maintain.
 Your business logic becomes spread across the callback-handlers.
 This is the problem known as "inversion of control".
+
+=====
+
+Most asynchronous systems provides *Publish*/*Subscribe* interface.
+Consider, we have a *Publisher*:
+
+```
+trait Publisher[A]{
+    def subscribe(subscriber: Subscriber[A])
+    def unsubscribe(subscriber: Subscriber[A])
+}
+```
+
+which may notify subscribers about appearance of new element of type `A`.
+And this is how *Subscriber* interface may look like:
+
+```
+trait Subscriber[A]{
+    def push(elem: Try[A])
+}
+```
+
+When *Publisher* emits some event, it notifies its subscribers by calling
+subscriber's *push* method.
+
+This is easy to implement *Publisher* and *Subscriber*, but it not so useful
+to work with them. Especially if we want to finally consume some `B` type 
+(so we have to transform `A` type to `B` ), or filter out some elements, 
+or build complex logic on consumer.
+
