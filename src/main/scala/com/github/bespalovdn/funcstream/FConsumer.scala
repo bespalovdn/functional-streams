@@ -19,5 +19,7 @@ object FConsumer
     def apply[A, B, X](fn: FStream[A, B] => Future[X]): FConsumer[A, B, X] = new FConsumer[A, B, X]{
         override def apply(stream: FStream[A, B]): Future[X] = fn(stream)
     }
+
+    def empty[A, B, C](c: => C): FConsumer[A, B, C] = FConsumer{ stream => success(c) }
 }
 
