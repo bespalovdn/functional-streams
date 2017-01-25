@@ -26,7 +26,7 @@ This is the problem known as "inversion of control".
 =====
 
 Most asynchronous systems provides *Publish*/*Subscribe* interface.
-Consider, we have a *Publisher*:
+Suppose, we have a *Publisher*:
 
 ```
 trait Publisher[A]{
