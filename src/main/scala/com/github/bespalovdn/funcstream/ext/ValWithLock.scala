@@ -9,11 +9,13 @@ class ValWithLock[A](value: A)
 
     def withWriteLock[B](fn: A => B): B = {
         val l = lock.writeLock()
+        l.lock()
         try fn(value) finally l.unlock()
     }
 
     def withReadLock[B](fn: A => B): B = {
         val l = lock.readLock()
+        l.lock()
         try fn(value) finally l.unlock()
     }
 }
