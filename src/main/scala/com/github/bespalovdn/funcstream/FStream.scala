@@ -1,5 +1,6 @@
 package com.github.bespalovdn.funcstream
 
+import com.github.bespalovdn.funcstream.ext.ValWithLock
 import com.github.bespalovdn.funcstream.mono.Producer.ProducerImpl
 import com.github.bespalovdn.funcstream.mono.{Consumer, Producer, Publisher, Subscriber}
 
@@ -33,7 +34,7 @@ object FStream
         override def read(timeout: Duration): Future[A] = reader.get(timeout)
 
         override def write(elem: B): Future[Unit] = {
-            connection.synchronized{ connection.write(elem) }
+            connection.write(elem)
             success()
         }
 
@@ -68,21 +69,21 @@ object FStream
         }
 
         private class ProxyEndPoint[C, D](publisher: Publisher[C], transformUp: D => B) extends Connection[C, D] with Subscriber[C] {
-            private val subscribers = mutable.ListBuffer.empty[Subscriber[C]]
-            override def subscribe(subscriber: Subscriber[C]): Unit = subscribers.synchronized{
+            private val subscribers = new ValWithLock(mutable.ListBuffer.empty[Subscriber[C]])
+            override def subscribe(subscriber: Subscriber[C]): Unit = subscribers.withWriteLock{ subscribers =>
                 if(subscribers.isEmpty){
                     publisher.subscribe(this)
                 }
                 subscribers += subscriber
             }
-            override def unsubscribe(subscriber: Subscriber[C]): Unit = subscribers.synchronized{
+            override def unsubscribe(subscriber: Subscriber[C]): Unit = subscribers.withWriteLock{ subscribers =>
                 subscribers -= subscriber
                 if(subscribers.isEmpty){
                     publisher.unsubscribe(this)
                 }
             }
-            override def write(elem: D): Unit = connection.synchronized{ connection.write(transformUp(elem)) }
-            override def push(elem: Try[C]): Unit = subscribers.synchronized{ subscribers.foreach(_.push(elem)) }
+            override def write(elem: D): Unit = connection.write(transformUp(elem))
+            override def push(elem: Try[C]): Unit = subscribers.withReadLock{ subscribers => subscribers.foreach(_.push(elem)) }
         }
 
     }

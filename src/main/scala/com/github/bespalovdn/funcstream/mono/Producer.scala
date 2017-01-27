@@ -1,6 +1,6 @@
 package com.github.bespalovdn.funcstream.mono
 
-import com.github.bespalovdn.funcstream.ext.TimeoutSupport
+import com.github.bespalovdn.funcstream.ext.{TimeoutSupport, ValWithLock}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
@@ -35,10 +35,10 @@ object Producer
             val available = mutable.Queue.empty[Try[A]]
             val requested = mutable.Queue.empty[Promise[A]]
         }
-        private val listeners = mutable.ArrayBuffer.empty[A => Unit]
+        private val listeners = new ValWithLock(mutable.ArrayBuffer.empty[A => Unit])
 
         override def push(elem: Try[A]): Unit = {
-            notifyListeneres(elem)
+            notifyListeners(elem)
             elements.synchronized {
                 if (elements.requested.nonEmpty) {
                     val completed = elements.requested.dequeue().tryComplete(elem)
@@ -70,23 +70,23 @@ object Producer
 
         override def transform [B](fn: A => B): Producer[B] = {
             val proxy = new Publisher[B] with Subscriber[A]{
-                private val subscribers = mutable.ListBuffer.empty[Subscriber[B]]
-                override def subscribe(subscriber: Subscriber[B]): Unit = subscribers.synchronized {
+                private val subscribers = new ValWithLock(mutable.ListBuffer.empty[Subscriber[B]])
+                override def subscribe(subscriber: Subscriber[B]): Unit = subscribers.withWriteLock { subscribers =>
                     if(subscribers.isEmpty){
                         publisher.subscribe(this)
                     }
                     subscribers += subscriber
                 }
-                override def unsubscribe(subscriber: Subscriber[B]): Unit = subscribers.synchronized {
+                override def unsubscribe(subscriber: Subscriber[B]): Unit = subscribers.withWriteLock { subscribers =>
                     subscribers -= subscriber
                     if(subscribers.isEmpty){
                         publisher.unsubscribe(this)
                     }
                 }
                 override def push(elem: Try[A]): Unit = {
-                    notifyListeneres(elem)
-                    subscribers.synchronized {
-                        subscribers.foreach{subscriber =>
+                    notifyListeners(elem)
+                    subscribers.withReadLock { subs =>
+                        subs.foreach{ subscriber =>
                             try{
                                 val transformed: Try[B] = elem.map(fn)
                                 subscriber.push(transformed)
@@ -105,7 +105,7 @@ object Producer
         override def filter(fn: A => Boolean): Producer[A] = {
             val proxy = new Proxy{
                 override def push(elem: Try[A]): Unit = {
-                    notifyListeneres(elem)
+                    notifyListeners(elem)
                     elem match {
                         case Success(a) if fn(a) => super.push(elem)
                         case _ => // do nothing
@@ -120,29 +120,29 @@ object Producer
         override def fork(): Producer[A] = new ProducerImpl[A](new Proxy)
 
         override def addListener(listener: (A) => Unit): Producer[A] = {
-            listeners.synchronized{ listeners += listener }
+            listeners.withWriteLock{ listeners => listeners += listener }
             this
         }
 
-        private def notifyListeneres(elem: Try[A]): Unit ={
-            elem.foreach(a => listeners.synchronized{ listeners.foreach(listener => listener(a)) })
+        private def notifyListeners(elem: Try[A]): Unit ={
+            elem.foreach(a => listeners.withReadLock{ listeners => listeners.foreach(listener => listener(a)) })
         }
 
         private class Proxy extends Publisher[A] with Subscriber[A]{
-            private val subscribers = mutable.ListBuffer.empty[Subscriber[A]]
-            override def subscribe(subscriber: Subscriber[A]): Unit = subscribers.synchronized {
+            private val subscribers = new ValWithLock(mutable.ListBuffer.empty[Subscriber[A]])
+            override def subscribe(subscriber: Subscriber[A]): Unit = subscribers.withWriteLock { subscribers =>
                 if(subscribers.isEmpty){
                     publisher.subscribe(this)
                 }
                 subscribers += subscriber
             }
-            override def unsubscribe(subscriber: Subscriber[A]): Unit = subscribers.synchronized {
+            override def unsubscribe(subscriber: Subscriber[A]): Unit = subscribers.withWriteLock { subscribers =>
                 subscribers -= subscriber
                 if(subscribers.isEmpty){
                     publisher.unsubscribe(this)
                 }
             }
-            override def push(elem: Try[A]): Unit = subscribers.synchronized{ subscribers.foreach(_.push(elem)) }
+            override def push(elem: Try[A]): Unit = subscribers.withReadLock{ subs => subs.foreach(_.push(elem)) }
         }
     }
 }

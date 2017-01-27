@@ -4,7 +4,7 @@ apply plugin: 'signing'
 
 group = "com.github.bespalovdn"
 archivesBaseName = "functional-streams_2.12"
-version = '1.0.0.22-SNAPSHOT'
+version = '1.0.0.23-SNAPSHOT'
 
 tasks.withType(ScalaCompile) {
     // Enable Scala warnings output
