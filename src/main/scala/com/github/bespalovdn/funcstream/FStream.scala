@@ -85,7 +85,7 @@ object FStream
                 subscribers.set(subs)
             }
             override def write(elem: D): Unit = connection.write(transformUp(elem))
-            override def push(elem: Try[C]): Unit = subscribers.withReadLock{ subscribers => subscribers.foreach(_.push(elem)) }
+            override def push(elem: Try[C]): Unit = subscribers.get.foreach(_.push(elem))
         }
 
     }
