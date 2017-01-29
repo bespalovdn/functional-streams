@@ -1,9 +1,8 @@
 package com.github.bespalovdn.funcstream
 
-import java.util.concurrent.atomic.AtomicReference
-
+import com.github.bespalovdn.funcstream.impl.PublisherProxy
 import com.github.bespalovdn.funcstream.mono.Producer.ProducerImpl
-import com.github.bespalovdn.funcstream.mono.{Consumer, Producer, Publisher, Subscriber}
+import com.github.bespalovdn.funcstream.mono.{Consumer, Producer, Publisher}
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
@@ -68,24 +67,9 @@ object FStream
             toStream(producer)
         }
 
-        private class ProxyEndPoint[C, D](publisher: Publisher[C], transformUp: D => B) extends Connection[C, D] with Subscriber[C] {
-            private val subscribers = new AtomicReference(Vector.empty[Subscriber[C]])
-            override def subscribe(subscriber: Subscriber[C]): Unit = subscribers.synchronized {
-                val subs = subscribers.get()
-                if(subs.isEmpty){
-                    publisher.subscribe(this)
-                }
-                subscribers.set(subs :+ subscriber)
-            }
-            override def unsubscribe(subscriber: Subscriber[C]): Unit = subscribers.synchronized{
-                val subs = subscribers.get() filterNot (_ eq subscriber)
-                if(subs.isEmpty){
-                    publisher.unsubscribe(this)
-                }
-                subscribers.set(subs)
-            }
+        private class ProxyEndPoint[C, D](val upstream: Publisher[C], transformUp: D => B) extends Connection[C, D] with PublisherProxy[C, C] {
             override def write(elem: D): Unit = connection.write(transformUp(elem))
-            override def push(elem: Try[C]): Unit = subscribers.get.foreach(_.push(elem))
+            override def push(elem: Try[C]): Unit = forEachSubscriber(_.push(elem))
         }
 
     }
