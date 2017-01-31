@@ -37,7 +37,7 @@ trait TimeoutSupport
     }
 }
 
-object TimeoutSupport
+object TimeoutSupport extends TimeoutSupport
 {
     private val scheduledExecutor: ScheduledExecutorService = Executors.newScheduledThreadPool(1, newThreadFactory())
 
