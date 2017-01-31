@@ -1,5 +1,6 @@
 package com.github.bespalovdn.funcstream
 
+import com.github.bespalovdn.funcstream.ext.FutureUtils._
 import com.github.bespalovdn.funcstream.impl.PublisherProxy
 import com.github.bespalovdn.funcstream.mono.Producer.ProducerImpl
 import com.github.bespalovdn.funcstream.mono.{Consumer, Producer, Publisher}

@@ -1,6 +1,6 @@
 package com.github.bespalovdn.funcstream
 
-import com.github.bespalovdn.funcstream.ext.FutureExtensions._
+import com.github.bespalovdn.funcstream.ext.FutureUtils._
 
 import scala.concurrent.{ExecutionContext, Future}
 

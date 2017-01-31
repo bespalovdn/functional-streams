@@ -2,7 +2,8 @@ package com.github.bespalovdn.funcstream
 
 import java.util.concurrent.TimeoutException
 
-import com.github.bespalovdn.funcstream.ext.{FutureExtensions, TimeoutSupport}
+import com.github.bespalovdn.funcstream.ext.FutureUtils._
+import com.github.bespalovdn.funcstream.ext.TimeoutSupport
 import com.github.bespalovdn.funcstream.mono.Subscriber
 import org.junit.runner.RunWith
 import org.scalatest._
@@ -19,7 +20,6 @@ class FunctionalStreamsTest extends FlatSpec
     with BeforeAndAfterAll
     with BeforeAndAfterEach
     with Inside
-    with FutureExtensions
 {
     implicit def executionContext: ExecutionContext = scala.concurrent.ExecutionContext.global
 

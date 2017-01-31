@@ -3,7 +3,7 @@ package com.github.bespalovdn.funcstream.manual
 import java.util.concurrent.Executors
 
 import com.github.bespalovdn.funcstream._
-import com.github.bespalovdn.funcstream.ext.FutureExtensions
+import com.github.bespalovdn.funcstream.ext.FutureUtils._
 import com.github.bespalovdn.funcstream.mono.Subscriber
 
 import scala.collection.mutable
@@ -11,7 +11,7 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.Success
 
-object FStreamForkTest extends FutureExtensions
+object FStreamForkTest
 {
     class Mono extends Connection[String, String]
     {

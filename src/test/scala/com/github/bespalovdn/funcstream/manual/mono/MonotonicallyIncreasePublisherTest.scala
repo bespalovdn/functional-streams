@@ -2,7 +2,7 @@ package com.github.bespalovdn.funcstream.manual.mono
 
 import java.util.concurrent.Executors
 
-import com.github.bespalovdn.funcstream.ext.FutureExtensions
+import com.github.bespalovdn.funcstream.ext.FutureUtils._
 import com.github.bespalovdn.funcstream.mono.{Consumer, Producer, Publisher, Subscriber}
 
 import scala.collection.mutable
@@ -10,7 +10,7 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.Success
 
-object MonotonicallyIncreasePublisherTest extends FutureExtensions
+object MonotonicallyIncreasePublisherTest
 {
     class Mono extends Publisher[String]
     {

@@ -3,11 +3,13 @@ package com.github.bespalovdn.funcstream.ext
 import java.util.TimerTask
 import java.util.concurrent._
 
+import com.github.bespalovdn.funcstream.ext.FutureUtils._
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}
 
-trait TimeoutSupport extends FutureExtensions
+trait TimeoutSupport
 {
     def withTimeout[A](timeout: Duration)(fn: => Future[A]): Future[A] = {
         if(timeout == null) fn
