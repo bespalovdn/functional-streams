@@ -21,6 +21,6 @@ object FConsumer
     }
 
     def empty[A, B]: FConsumer[A, B, Unit] = FConsumer{ stream => success() }
-    def empty[A, B, C](c: => C): FConsumer[A, B, C] = FConsumer{ stream => success(c) }
+    def empty[A, B, C](c: => C)(implicit ec: ExecutionContext): FConsumer[A, B, C] = FConsumer{ stream => success(c) }
 }
 
