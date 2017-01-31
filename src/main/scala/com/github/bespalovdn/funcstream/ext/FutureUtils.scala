@@ -3,7 +3,7 @@ package com.github.bespalovdn.funcstream.ext
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
 
-object FutureUtils
+trait FutureUtils
 {
     implicit class FutureOps[A](val f: Future[A]){
         def >>= [B](fAB: A => Future[B])(implicit e: ExecutionContext): Future[B] = f flatMap fAB
@@ -26,3 +26,5 @@ object FutureUtils
 
     def fork[A](f: => Future[A])(implicit ec: ExecutionContext): Future[Future[A]] = success(f)
 }
+
+object FutureUtils extends FutureUtils
