@@ -20,7 +20,7 @@ object FStreamStdInTest
         override def subscribe(subscriber: Subscriber[String]): Unit = subscribers += subscriber
         override def unsubscribe(subscriber: Subscriber[String]): Unit = subscribers -= subscriber
 
-        override def write(elem: String): Unit = Future {
+        override def write(elem: String): Future[Unit] = Future {
             println(elem)
         }(executorContext)
 

@@ -1,6 +1,5 @@
 package com.github.bespalovdn.funcstream
 
-import com.github.bespalovdn.funcstream.ext.FutureUtils._
 import com.github.bespalovdn.funcstream.impl.PublisherProxy
 import com.github.bespalovdn.funcstream.mono.Producer.ProducerImpl
 import com.github.bespalovdn.funcstream.mono.{Consumer, Producer, Publisher}
@@ -33,10 +32,7 @@ object FStream
 
         override def read(timeout: Duration): Future[A] = reader.get(timeout)
 
-        override def write(elem: B): Future[Unit] = {
-            connection.write(elem)
-            success()
-        }
+        override def write(elem: B): Future[Unit] = connection.write(elem)
 
         override def consume[C](c: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C] = {
             val consumer = Consumer[A, C] { _ => c.apply(this) }
@@ -69,7 +65,7 @@ object FStream
         }
 
         private class ProxyEndPoint[C, D](val upstream: Publisher[C], transformUp: D => B) extends Connection[C, D] with PublisherProxy[C, C] {
-            override def write(elem: D): Unit = connection.write(transformUp(elem))
+            override def write(elem: D): Future[Unit] = connection.write(transformUp(elem))
             override def push(elem: Try[C]): Unit = forEachSubscriber(_.push(elem))
         }
 

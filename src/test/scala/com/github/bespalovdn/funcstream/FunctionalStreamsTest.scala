@@ -25,7 +25,7 @@ class FunctionalStreamsTest extends FlatSpec
 
     "The test" should "check if read with timeout works" in {
         val connection = new Connection[Int, Int] with TimeoutSupport{
-            override def write(elem: Int): Unit = {}
+            override def write(elem: Int): Future[Unit] = Future.successful(())
             override def subscribe(subscriber: Subscriber[Int]): Unit = {} // do nothing since it not supposed to produce elems
             override def unsubscribe(subscriber: Subscriber[Int]): Unit = {} // do nothing since it not supposed to produce elems
         }
