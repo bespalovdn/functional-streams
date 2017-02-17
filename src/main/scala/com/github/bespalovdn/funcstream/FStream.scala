@@ -3,10 +3,11 @@ package com.github.bespalovdn.funcstream
 import com.github.bespalovdn.funcstream.impl.PublisherProxy
 import com.github.bespalovdn.funcstream.mono.Producer.ProducerImpl
 import com.github.bespalovdn.funcstream.mono.{Consumer, Producer, Publisher}
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 trait FStream[A, B]{
     def read(timeout: Duration = null): Future[A]
@@ -23,6 +24,8 @@ trait FStream[A, B]{
 
 object FStream
 {
+    private lazy val logger: Logger = LoggerFactory.getLogger(getClass)
+
     def apply[A, B](connection: Connection[A, B]): FStream[A, B] = new FStreamImpl[A, B](connection)
 
     private class FStreamImpl[A, B](connection: Connection[A, B])
@@ -36,7 +39,12 @@ object FStream
 
         override def consume[C](c: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C] = {
             val consumer = Consumer[A, C] { _ => c.apply(this) }
-            reader consume consumer
+            val result = reader consume consumer
+            result.onComplete{
+                case Success(_) => // do nothing
+                case Failure(t) => logger.warn(t.getMessage, t)
+            }
+            result
         }
 
         override def transform [C, D](down: A => C, up: D => B): FStream[C, D] = {
