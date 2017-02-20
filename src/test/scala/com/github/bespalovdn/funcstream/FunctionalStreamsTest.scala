@@ -44,6 +44,10 @@ class FunctionalStreamsTest extends FlatSpec
         }
     }
 
+    it should "check if stream consumes input from producer when subscribed only" in {
+        ???
+    }
+
 //    it should "check if piping functionality works" in {
 //        val connection = new FStreamV1[Int, Int] {
 //            var lastWrittenElem: Int = 0
