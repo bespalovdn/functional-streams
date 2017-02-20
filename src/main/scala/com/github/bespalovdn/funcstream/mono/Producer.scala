@@ -80,7 +80,7 @@ object Producer
                             subscriber.push(transformed)
                         }catch{
                             case t: Throwable =>
-                                logger.error(s"Failed to transform value: [$elem]. Cause: [%s]" format t.getMessage)
+                                logger.error(s"Failed to transform value: [$elem].", t)
                                 throw t
                         }
                     }
