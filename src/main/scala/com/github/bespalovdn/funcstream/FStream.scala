@@ -12,13 +12,12 @@ trait FStream[A, B]{
     def read(timeout: Duration = null): Future[A]
     def write(elem: B): Future[Unit]
     def consume [C](consumer: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C]
+    def <=> [C](consumer: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C] = consume(consumer)
     def transform [C, D](down: A => C, up: D => B): FStream[C, D]
     def filter(fn: A => Boolean): FStream[A, B]
     def filterNot(fn: A => Boolean): FStream[A, B]
     def fork(): FStream[A, B]
     def addListener(listener: A => Unit): FStream[A, B]
-
-    def <=> [C](consumer: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C] = consume(consumer)
 }
 
 object FStream
@@ -28,33 +27,33 @@ object FStream
     private class FStreamImpl[A, B](connection: Connection[A, B])
         extends FStream[A, B]
     {
-        private val reader: Producer[A] = Producer(connection)
+        private val upStream: Producer[A] = Producer(connection)
 
-        override def read(timeout: Duration): Future[A] = reader.get(timeout)
+        override def read(timeout: Duration): Future[A] = upStream.get(timeout)
 
         override def write(elem: B): Future[Unit] = connection.write(elem)
 
         override def consume[C](c: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C] = {
             val consumer = Consumer[A, C] { _ => c.apply(this) }
-            reader consume consumer
+            upStream ==> consumer
         }
 
         override def transform [C, D](down: A => C, up: D => B): FStream[C, D] = {
-            val transformed: Producer[C] = reader.transform(down)
+            val transformed: Producer[C] = upStream.transform(down)
             producer2stream(transformed, up)
         }
 
         override def filter(fn: (A) => Boolean): FStream[A, B] = {
-            val filtered = reader.filter(fn)
+            val filtered = upStream.filter(fn)
             producer2stream(filtered, identity)
         }
 
         override def filterNot(fn: A => Boolean): FStream[A, B] = filter(a => !fn(a))
 
-        override def fork(): FStream[A, B] = producer2stream(reader.fork(), identity)
+        override def fork(): FStream[A, B] = producer2stream(upStream.fork(), identity)
 
         override def addListener(listener: (A) => Unit): FStream[A, B] = {
-            reader.addListener(listener)
+            upStream.addListener(listener)
             this
         }
 
