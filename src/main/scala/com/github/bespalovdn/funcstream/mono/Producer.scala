@@ -1,5 +1,7 @@
 package com.github.bespalovdn.funcstream.mono
 
+import java.util.concurrent.atomic.AtomicBoolean
+
 import com.github.bespalovdn.funcstream.ext.TimeoutSupport
 import com.github.bespalovdn.funcstream.impl.PublisherProxy
 import org.slf4j.{Logger, LoggerFactory}
@@ -18,7 +20,9 @@ trait Producer[A] {
     def filterNot(fn: A => Boolean): Producer[A]
     def fork(): Producer[A]
     def addListener(listener: A => Unit): Producer[A]
-    def subscribe(): Unit
+
+    def subscribe(keepSubscribed: Boolean = false): Unit
+    def unsubscribe(): Unit
 }
 
 object Producer
@@ -37,6 +41,8 @@ object Producer
             val requested = mutable.Queue.empty[Promise[A]]
         }
         private var listeners = Vector.empty[A => Unit]
+        private val keepSubscribed = new AtomicBoolean(false)
+        private val hasActiveConsumer = new AtomicBoolean(false)
 
         override def push(elem: Try[A]): Unit = {
             notifyListeners(elem)
@@ -64,13 +70,27 @@ object Producer
 
         override def pipeTo [B](c: Consumer[A, B]): Future[B] = {
             import scala.concurrent.ExecutionContext.Implicits.global
+            hasActiveConsumer.set(true)
             val f = c.consume(this)
             publisher.subscribe(this)
-            f.onComplete(_ => publisher.unsubscribe(this))
+            f.onComplete{ _ =>
+                hasActiveConsumer.set(false)
+                if(!keepSubscribed.get())
+                    publisher.unsubscribe(this)
+            }
             f
         }
 
-        override def subscribe(): Unit = publisher.subscribe(this)
+        override def subscribe(keepSubscribed: Boolean): Unit = {
+            this.keepSubscribed.set(keepSubscribed)
+            publisher.subscribe(this)
+        }
+
+        override def unsubscribe(): Unit = {
+            keepSubscribed.set(false)
+            if(!hasActiveConsumer.get())
+                publisher.unsubscribe(this)
+        }
 
         override def transform [B](fn: A => B): Producer[B] = {
             val proxy = new PublisherProxy[A, B]{
