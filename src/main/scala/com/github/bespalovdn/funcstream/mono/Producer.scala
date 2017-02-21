@@ -21,7 +21,7 @@ trait Producer[A] {
     def fork(): Producer[A]
     def addListener(listener: A => Unit): Producer[A]
 
-    def subscribe(keepSubscribed: Boolean = false): Unit
+    def subscribe(keepSubscribed: Boolean): Unit
     def unsubscribe(): Unit
 }
 

@@ -146,7 +146,7 @@ class FStreamTest extends UT
         conn.pushNext()
         res2.await() should be (2)
 
-        forked.subscribe()
+        forked.subscribe(true)
 
         val res3 = stream <=> FConsumer{ stream => stream.read() }
         conn.pushNext()
@@ -164,6 +164,8 @@ class FStreamTest extends UT
             } yield ()
         }
         res345.await()
+
+        forked.unsubscribe()
 
         val res6 = stream <=> FConsumer{ stream => stream.read() }
         conn.pushNext()
