@@ -109,6 +109,20 @@ class FunctionalStreamsTest extends FlatSpec
         conn.getNextElem should be (6)
     }
 
+    it should "check if monadic consumer works" in {
+        val conn = new TestConnection
+        val stream = FStream(conn)
+
+        val consumer: FConsumer[Int, Int, Int] = FConsumer { stream => stream.read() }
+
+        val res = stream <=> { consumer >> consumer }
+        conn.pushNext()
+        conn.pushNext()
+        res.await() should be (2)
+
+
+    }
+
 //    it should "check if piping functionality works" in {
 //        val connection = new FStreamV1[Int, Int] {
 //            var lastWrittenElem: Int = 0
