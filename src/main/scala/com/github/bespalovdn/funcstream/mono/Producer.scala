@@ -41,7 +41,7 @@ object Producer
             val requested = mutable.Queue.empty[Promise[A]]
         }
         private var listeners = Vector.empty[A => Unit]
-        private val bufferingEnabled = new AtomicBoolean(false)
+        private val bufferEnabled = new AtomicBoolean(false)
         private val hasActiveConsumer = new AtomicBoolean(false)
 
         override def push(elem: Try[A]): Unit = {
@@ -68,7 +68,7 @@ object Producer
             }
         }
 
-        override def pipeTo [B](c: Consumer[A, B]): Future[B] = bufferingEnabled.synchronized {
+        override def pipeTo [B](c: Consumer[A, B]): Future[B] = bufferEnabled.synchronized {
             import scala.concurrent.ExecutionContext.Implicits.global
             hasActiveConsumer.set(true)
             val f = c.consume(this)
@@ -76,24 +76,24 @@ object Producer
             f.onComplete {
                 case _ =>
                     hasActiveConsumer.set(false)
-                    bufferingEnabled.synchronized {
-                        if (!bufferingEnabled.get())
+                    bufferEnabled.synchronized {
+                        if (!bufferEnabled.get())
                             publisher.unsubscribe(this)
                     }
             }
             f
         }
 
-        override def enableBuffer(): Unit = bufferingEnabled.synchronized {
-            if(!bufferingEnabled.get()){
-                bufferingEnabled.set(true)
+        override def enableBuffer(): Unit = bufferEnabled.synchronized {
+            if(!bufferEnabled.get()){
+                bufferEnabled.set(true)
                 publisher.subscribe(this)
             }
         }
 
-        override def disableBuffer(): Unit = bufferingEnabled.synchronized {
-            if(bufferingEnabled.get()){
-                bufferingEnabled.set(false)
+        override def disableBuffer(): Unit = bufferEnabled.synchronized {
+            if(bufferEnabled.get()){
+                bufferEnabled.set(false)
                 publisher.unsubscribe(this)
             }
         }
