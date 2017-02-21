@@ -72,7 +72,7 @@ class FunctionalStreamsTest extends FlatSpec
         conn.getNextElem should be (7)
     }
 
-    it should "check if forking works" in {
+    it should "check if fork works" in {
         val conn = new TestConnection
         val stream = FStream(conn)
 
@@ -107,6 +107,21 @@ class FunctionalStreamsTest extends FlatSpec
         res4.await()
         res5.await()
         conn.getNextElem should be (6)
+    }
+
+    it should "check if fork works (2)" in {
+        val conn = new TestConnection
+        val stream = FStream(conn)
+        val forked = stream.fork()
+        val forkedForked = forked.fork()
+
+        val res1 = forkedForked <=> FConsumer{ stream => stream.read() }
+        conn.pushNext()
+        res1.await() should be (1)
+
+        val res2 = forked <=> FConsumer{ stream => stream.read() }
+        conn.pushNext()
+        res2.await() should be (2)
     }
 
     it should "check if subscription logic works correctly" in {
