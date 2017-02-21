@@ -4,34 +4,18 @@ import java.util.concurrent.TimeoutException
 
 import com.github.bespalovdn.funcstream.ext.FutureUtils._
 import com.github.bespalovdn.funcstream.ext.TimeoutSupport
-import com.github.bespalovdn.funcstream.impl.DefaultPublisher
 import org.junit.runner.RunWith
-import org.scalatest._
 import org.scalatest.junit.JUnitRunner
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.reflectiveCalls
-import scala.util.{Failure, Success}
+import scala.util.Failure
 
 @RunWith(classOf[JUnitRunner])
-class FStreamTest extends FlatSpec
-    with Matchers
-    with BeforeAndAfterAll
-    with BeforeAndAfterEach
-    with Inside
+class FStreamTest extends UT
 {
     implicit def executionContext: ExecutionContext = scala.concurrent.ExecutionContext.global
-
-    class TestConnection extends Connection[Int, Int] with DefaultPublisher[Int]{
-        private var nextElem: Int = 1
-        override def write(elem: Int): Future[Unit] = success()
-        def pushNext(): Unit = {
-            forEachSubscriber(s => s.push(Success(nextElem)))
-            nextElem += 1
-        }
-        def getNextElem: Int = nextElem
-    }
 
     "The test" should "check if read with timeout works" in {
         val connection = new TestConnection with TimeoutSupport
