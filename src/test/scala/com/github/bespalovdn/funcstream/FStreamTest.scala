@@ -56,6 +56,32 @@ class FStreamTest extends UT
         conn.getNextElem should be (7)
     }
 
+    it should "check if subscription logic works correctly" in {
+        val conn = new TestConnection
+        val stream = FStream(conn)
+        val forkedStream = stream.fork()
+
+        val res1 = stream <=> FConsumer{ stream => stream.read() }
+        val fRes1 = forkedStream <=> FConsumer{ stream => stream.read() }
+        conn.pushNext()
+        res1.await() should be (1)
+        fRes1.await() should be (1)
+
+        val res2 = stream <=> FConsumer{ stream => stream.read() }
+        conn.pushNext()
+        res2.await() should be (2)
+
+        val res3 = forkedStream <=> FConsumer{ stream => stream.read() }
+        conn.pushNext()
+        res3.await() should be (3)
+
+        val res4 = stream <=> FConsumer{ stream => stream.read() }
+        val fRes4 = forkedStream <=> FConsumer{ stream => stream.read() }
+        conn.pushNext()
+        res4.await() should be (4)
+        fRes4.await() should be (4)
+    }
+
     it should "check if fork works" in {
         val conn = new TestConnection
         val stream = FStream(conn)
@@ -108,30 +134,39 @@ class FStreamTest extends UT
         res2.await() should be (2)
     }
 
-    it should "check if subscription logic works correctly" in {
+    it should "check if buffering functionality works" in {
         val conn = new TestConnection
         val stream = FStream(conn)
-        val forkedStream = stream.fork()
+        val forked = stream.fork()
+
+        forked.enableBuffer()
 
         val res1 = stream <=> FConsumer{ stream => stream.read() }
-        val fRes1 = forkedStream <=> FConsumer{ stream => stream.read() }
         conn.pushNext()
         res1.await() should be (1)
-        fRes1.await() should be (1)
-
+        conn.pushNext()
         val res2 = stream <=> FConsumer{ stream => stream.read() }
         conn.pushNext()
-        res2.await() should be (2)
+        res2.await() should be (3)
 
-        val res3 = forkedStream <=> FConsumer{ stream => stream.read() }
-        conn.pushNext()
-        res3.await() should be (3)
+        val res3 = forked <=> FConsumer[Int, Int, Unit]{
+            stream => for {
+                _ <- stream.read() >>= {elem => elem should be (1); success()}
+                _ <- stream.read() >>= {elem => elem should be (2); success()}
+                _ <- stream.read() >>= {elem => elem should be (3); success()}
+            } yield ()
+        }
+        res3.await()
+
+        forked.disableBuffer()
 
         val res4 = stream <=> FConsumer{ stream => stream.read() }
-        val fRes4 = forkedStream <=> FConsumer{ stream => stream.read() }
         conn.pushNext()
         res4.await() should be (4)
-        fRes4.await() should be (4)
+
+        val res5 = forked <=> FConsumer{ stream => stream.read() }
+        conn.pushNext()
+        res5.await() should be (5)
     }
 
     it should "check if monadic consumer works" in {
@@ -153,9 +188,5 @@ class FStreamTest extends UT
         conn.pushNext()
         conn.pushNext()
         sum7.await() should be (7)
-    }
-
-    it should "check if buffering functionality works" in {
-        ???
     }
 }
