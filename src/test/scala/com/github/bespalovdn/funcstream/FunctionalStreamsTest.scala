@@ -127,6 +127,12 @@ class FunctionalStreamsTest extends FlatSpec
         val res3 = forkedStream <=> FConsumer{ stream => stream.read() }
         conn.pushNext()
         res3.await() should be (3)
+
+        val res4 = stream <=> FConsumer{ stream => stream.read() }
+        val fRes4 = forkedStream <=> FConsumer{ stream => stream.read() }
+        conn.pushNext()
+        res4.await() should be (4)
+        fRes4.await() should be (4)
     }
 
     it should "check if monadic consumer works" in {
