@@ -4,6 +4,7 @@ import java.util.concurrent.TimeoutException
 
 import com.github.bespalovdn.funcstream.ext.FutureUtils._
 import com.github.bespalovdn.funcstream.ext.TimeoutSupport
+import com.github.bespalovdn.funcstream.impl.DefaultPublisher
 import com.github.bespalovdn.funcstream.mono.Subscriber
 import org.junit.runner.RunWith
 import org.scalatest._
@@ -12,7 +13,7 @@ import org.scalatest.junit.JUnitRunner
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.reflectiveCalls
-import scala.util.Failure
+import scala.util.{Failure, Success}
 
 @RunWith(classOf[JUnitRunner])
 class FunctionalStreamsTest extends FlatSpec
@@ -45,7 +46,31 @@ class FunctionalStreamsTest extends FlatSpec
     }
 
     it should "check if stream consumes input from producer when subscribed only" in {
-        ???
+        class TestConn extends Connection[Int, Int] with DefaultPublisher[Int]{
+            private var nextElem: Int = 1
+            override def write(elem: Int): Future[Unit] = ???
+            def pushNext(): Unit = {
+                forEachSubscriber(s => s.push(Success(nextElem)))
+                nextElem += 1
+            }
+            def getNextElem: Int = nextElem
+        }
+
+        val conn = new TestConn
+        val stream = FStream(conn)
+        conn.pushNext()
+        conn.pushNext()
+        conn.getNextElem should be (3)
+
+        val result = stream <=> FConsumer{
+            stream => for {
+                _ <- Future{ conn.pushNext() }
+                elem <- stream.read()
+                _ <- Future{ elem should be (3) }
+            } yield ()
+        }
+        result.await
+        conn.getNextElem should be (4)
     }
 
 //    it should "check if piping functionality works" in {

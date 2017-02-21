@@ -1,6 +1,7 @@
 package com.github.bespalovdn.funcstream.ext
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.language.implicitConversions
 
 trait FutureUtils
@@ -9,6 +10,8 @@ trait FutureUtils
         def >>= [B](fAB: A => Future[B])(implicit e: ExecutionContext): Future[B] = f flatMap fAB
         def >> [B](fB: => Future[B])(implicit e: ExecutionContext): Future[B] = f flatMap (_ => fB)
         def <|> (f2: Future[A])(implicit e: ExecutionContext): Future[A] = Future.firstCompletedOf(Seq(f, f2))
+        def await(): A = await(Duration.Inf)
+        def await(timeout: Duration): A = Await.result(f, timeout)
     }
 
     implicit def convert2Unit[A](f: Future[A]): Future[Unit] = {
@@ -23,8 +26,6 @@ trait FutureUtils
     }
 
     def fail[A](t: Throwable): Future[A] = Future.failed(t)
-
-    def fork[A](f: => Future[A])(implicit ec: ExecutionContext): Future[Future[A]] = success(f)
 }
 
 object FutureUtils extends FutureUtils
