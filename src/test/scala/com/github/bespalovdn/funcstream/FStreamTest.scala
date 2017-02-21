@@ -139,34 +139,40 @@ class FStreamTest extends UT
         val stream = FStream(conn)
         val forked = stream.fork()
 
-        forked.enableBuffer()
-
         val res1 = stream <=> FConsumer{ stream => stream.read() }
         conn.pushNext()
         res1.await() should be (1)
+        val res2 = forked <=> FConsumer{ stream => stream.read() }
         conn.pushNext()
-        val res2 = stream <=> FConsumer{ stream => stream.read() }
-        conn.pushNext()
-        res2.await() should be (3)
+        res2.await() should be (2)
 
-        val res3 = forked <=> FConsumer[Int, Int, Unit]{
+        forked.enableBuffer()
+
+        val res3 = stream <=> FConsumer{ stream => stream.read() }
+        conn.pushNext()
+        res3.await() should be (3)
+        conn.pushNext()
+        val res5 = stream <=> FConsumer{ stream => stream.read() }
+        conn.pushNext()
+        res5.await() should be (5)
+
+        val res345 = forked <=> FConsumer[Int, Int, Unit]{
             stream => for {
-                _ <- stream.read() >>= {elem => elem should be (1); success()}
-                _ <- stream.read() >>= {elem => elem should be (2); success()}
                 _ <- stream.read() >>= {elem => elem should be (3); success()}
+                _ <- stream.read() >>= {elem => elem should be (4); success()}
+                _ <- stream.read() >>= {elem => elem should be (5); success()}
             } yield ()
         }
-        res3.await()
+        res345.await()
 
         forked.disableBuffer()
 
-        val res4 = stream <=> FConsumer{ stream => stream.read() }
+        val res6 = stream <=> FConsumer{ stream => stream.read() }
         conn.pushNext()
-        res4.await() should be (4)
-
-        val res5 = forked <=> FConsumer{ stream => stream.read() }
+        res6.await() should be (6)
+        val res7 = forked <=> FConsumer{ stream => stream.read() }
         conn.pushNext()
-        res5.await() should be (5)
+        res7.await() should be (7)
     }
 
     it should "check if monadic consumer works" in {
