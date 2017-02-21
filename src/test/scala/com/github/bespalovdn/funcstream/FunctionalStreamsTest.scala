@@ -80,11 +80,13 @@ class FunctionalStreamsTest extends FlatSpec
         conn.pushNext()
         conn.getNextElem should be (2)
 
-        val res1 = stream <=> FConsumer{ stream => stream.read() }
-        val res2 = stream <=> FConsumer{ stream => stream.read() }
+        val res1 = stream.fork() <=> FConsumer{ stream => stream.read() }
+        val res2 = stream.fork() <=> FConsumer{ stream => stream.read() }
+        val res3 = stream.fork() <=> FConsumer{ stream => stream.read() }
         conn.pushNext()
         res1.await() should be (2)
         res2.await() should be (2)
+        res3.await() should be (2)
     }
 
 //    it should "check if piping functionality works" in {
