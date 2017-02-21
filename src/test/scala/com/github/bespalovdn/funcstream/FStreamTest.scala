@@ -15,7 +15,7 @@ import scala.language.reflectiveCalls
 import scala.util.{Failure, Success}
 
 @RunWith(classOf[JUnitRunner])
-class FunctionalStreamsTest extends FlatSpec
+class FStreamTest extends FlatSpec
     with Matchers
     with BeforeAndAfterAll
     with BeforeAndAfterEach
@@ -109,7 +109,7 @@ class FunctionalStreamsTest extends FlatSpec
         conn.getNextElem should be (6)
     }
 
-    it should "check if fork works (2)" in {
+    it should "check if forked stream doesn't consume input until chained with consumer" in {
         val conn = new TestConnection
         val stream = FStream(conn)
         val forked = stream.fork()
@@ -171,68 +171,7 @@ class FunctionalStreamsTest extends FlatSpec
         sum7.await() should be (7)
     }
 
-//    it should "check if piping functionality works" in {
-//        val connection = new FStreamV1[Int, Int] {
-//            var lastWrittenElem: Int = 0
-//            override def read(timeout: Duration): Future[Int] = success(lastWrittenElem)
-//            override def write(elem: Int): Future[Unit] = {
-//                lastWrittenElem = elem
-//                success()
-//            }
-//        }
-//        val twice: FPipe[Int, Int, Int, Int] = FPipe{ upStream => new FStreamV1[Int, Int]{
-//            override def read(timeout: Duration): Future[Int] = upStream.read(timeout).map(_ * 2)
-//            override def write(elem: Int): Future[Unit] = upStream.write(elem * 2)
-//        }}
-//        val consumer: FPlainConsumer[Int, Int, Unit] = FConsumerV1{ implicit stream => for {
-//                i <- stream.read()
-//                _ <- {i should be (0); success()}
-//                _ <- stream.write(1)
-//                _ <- {connection.lastWrittenElem should be (2); success()}
-//                i <- stream.read()
-//                _ <- {i should be (4); success()}
-//            } yield consume()
-//        }
-//        FStreamConnector(connection) <=> twice <=> consumer
-//    }
-
-//    it should "check if stream forking works" in {
-//        val connection = new FStreamV1[Int, Int] {
-//            private var _readCount: Int = 0
-//            private val readValue: Iterator[Int] = Stream.from(1).iterator
-//
-//            override def read(timeout: Duration): Future[Int] = {
-//                _readCount += 1
-//                success(readValue.next())
-//            }
-//            override def write(elem: Int): Future[Unit] = success(())
-//
-//            def readCount: Int = _readCount
-//        }
-//
-//        type Consumer = FPlainConsumer[Int, Int, Unit]
-//
-//        val echoServer: Consumer = FConsumerV1 { implicit stream => for {
-//                a <- stream.read()
-//                _ <- stream.write(a)
-//            } yield consume ()
-//        }
-//
-//        def check(fn: => Unit): Consumer = FConsumerV1{ implicit stream =>
-//            fn
-//            success(consume())
-//        }
-//
-//        FStreamConnector(connection) <=> {
-//            check{
-//                connection.readCount should be (0)
-//            } >> echoServer >> check {
-//                connection.readCount should be (1)
-//            } >> FConsumerV1.fork(echoServer) >> echoServer >> check {
-//                connection.readCount should be (3)
-//            }
-//        }
-//    }
-
-    //TODO: add more tests with stream forking (consumer + pipe)
+    it should "check if buffering functionality works" in {
+        ???
+    }
 }
