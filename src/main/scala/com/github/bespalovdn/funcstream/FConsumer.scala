@@ -6,10 +6,13 @@ import scala.concurrent.{ExecutionContext, Future}
 
 trait FConsumer[A, B, X] extends (FStream[A, B] => Future[X]) {
     def >> [Y](cY: => FConsumer[A, B, Y])(implicit ec: ExecutionContext): FConsumer[A, B, Y] = FConsumer {
-        stream => {this.apply(stream) >> cY.apply(stream)}
+        stream => this.apply(stream) >> cY.apply(stream)
     }
     def >>= [Y](cXY: X => FConsumer[A, B, Y])(implicit ec: ExecutionContext): FConsumer[A, B, Y] = FConsumer {
-        stream => {this.apply(stream) >>= (x => cXY(x).apply(stream))}
+        stream => this.apply(stream) >>= (x => cXY(x).apply(stream))
+    }
+    def map[Y](fn: X => Y)(implicit ec: ExecutionContext): FConsumer[A, B, Y] = FConsumer{
+        stream => this.apply(stream).map(fn)
     }
     def flatMap[Y](fn: X => FConsumer[A, B, Y])(implicit ec: ExecutionContext): FConsumer[A, B, Y] = this >>= fn
 }

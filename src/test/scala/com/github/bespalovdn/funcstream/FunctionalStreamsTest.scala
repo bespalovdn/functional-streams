@@ -115,12 +115,19 @@ class FunctionalStreamsTest extends FlatSpec
 
         val consumer: FConsumer[Int, Int, Int] = FConsumer { stream => stream.read() }
 
-        val res = stream <=> { consumer >> consumer }
+        val res: Future[Int] = stream <=> { consumer >> consumer }
         conn.pushNext()
         conn.pushNext()
         res.await() should be (2)
 
-
+        val monadicPlus: FConsumer[Int, Int, Int] = for {
+            a <- consumer
+            b <- consumer
+        } yield a + b
+        val sum7 = stream <=> monadicPlus
+        conn.pushNext()
+        conn.pushNext()
+        sum7.await() should be (7)
     }
 
 //    it should "check if piping functionality works" in {
