@@ -36,7 +36,7 @@ object Producer
         with Subscriber[A]
         with TimeoutSupport
     {
-        private object elements {
+        private object elements { //TODO: should be replaced with RxScala's Observable
             val available = mutable.Queue.empty[Try[A]]
             val requested = mutable.Queue.empty[Promise[A]]
         }
