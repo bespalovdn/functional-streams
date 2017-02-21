@@ -21,8 +21,8 @@ trait Producer[A] {
     def fork(): Producer[A]
     def addListener(listener: A => Unit): Producer[A]
 
-    def subscribe(keepSubscribed: Boolean): Unit
-    def unsubscribe(): Unit
+    def preSubscribe(keepSubscribed: Boolean): Unit
+    def preSubscriptionStop(): Unit
 }
 
 object Producer
@@ -41,7 +41,7 @@ object Producer
             val requested = mutable.Queue.empty[Promise[A]]
         }
         private var listeners = Vector.empty[A => Unit]
-        private val keepSubscribed = new AtomicBoolean(false)
+        private var pinSubscribed: Option[Boolean] = None //Some(true) to keep subscribed, Some(false) to unsubscribe together with first consumer
         private val hasActiveConsumer = new AtomicBoolean(false)
 
         override def push(elem: Try[A]): Unit = {
@@ -75,19 +75,19 @@ object Producer
             publisher.subscribe(this)
             f.onComplete{ _ =>
                 hasActiveConsumer.set(false)
-                if(!keepSubscribed.get())
+                if(!pinSubscribed.getOrElse(false))
                     publisher.unsubscribe(this)
             }
             f
         }
 
-        override def subscribe(keepSubscribed: Boolean): Unit = {
-            this.keepSubscribed.set(keepSubscribed)
+        override def preSubscribe(keepSubscribed: Boolean): Unit = {
+            this.pinSubscribed = Some(keepSubscribed)
             publisher.subscribe(this)
         }
 
-        override def unsubscribe(): Unit = {
-            keepSubscribed.set(false)
+        override def preSubscriptionStop(): Unit = {
+            pinSubscribed = None
             if(!hasActiveConsumer.get())
                 publisher.unsubscribe(this)
         }
