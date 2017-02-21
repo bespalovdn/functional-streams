@@ -41,7 +41,7 @@ object MonotonicallyIncreasePublisherTest
                 if(nTimes > 0) {
                     p.get() >>= { str =>
                         println(s"$name: $str")
-                        consumer(name, nTimes - 1).apply(p)
+                        consumer(name, nTimes - 1).consume(p)
                     }
                 } else {
                     Future.successful(())

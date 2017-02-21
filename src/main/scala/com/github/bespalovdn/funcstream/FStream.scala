@@ -4,15 +4,15 @@ import com.github.bespalovdn.funcstream.impl.PublisherProxy
 import com.github.bespalovdn.funcstream.mono.Producer.ProducerImpl
 import com.github.bespalovdn.funcstream.mono.{Consumer, Producer, Publisher}
 
+import scala.concurrent.Future
 import scala.concurrent.duration.Duration
-import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
 trait FStream[A, B]{
     def read(timeout: Duration = null): Future[A]
     def write(elem: B): Future[Unit]
-    def consume [C](consumer: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C]
-    def <=> [C](consumer: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C] = consume(consumer)
+    def consume [C](consumer: FConsumer[A, B, C]): Future[C]
+    def <=> [C](consumer: FConsumer[A, B, C]): Future[C] = consume(consumer)
     def transform [C, D](down: A => C, up: D => B): FStream[C, D]
     def filter(fn: A => Boolean): FStream[A, B]
     def filterNot(fn: A => Boolean): FStream[A, B]
@@ -33,7 +33,7 @@ object FStream
 
         override def write(elem: B): Future[Unit] = connection.write(elem)
 
-        override def consume[C](c: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C] = {
+        override def consume[C](c: FConsumer[A, B, C]): Future[C] = {
             val consumer = Consumer[A, C] { _ => c.apply(this) }
             upStream ==> consumer
         }

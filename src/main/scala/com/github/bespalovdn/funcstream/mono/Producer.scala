@@ -1,24 +1,27 @@
 package com.github.bespalovdn.funcstream.mono
 
+import com.github.bespalovdn.funcstream.ext.FutureUtils._
 import com.github.bespalovdn.funcstream.ext.TimeoutSupport
 import com.github.bespalovdn.funcstream.impl.PublisherProxy
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
 import scala.concurrent.duration.Duration
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{Future, Promise}
 import scala.util.{Success, Try}
 
 trait Producer[A] {
     def get(timeout: Duration = null): Future[A]
-    def consume [B](c: Consumer[A, B])(implicit ec: ExecutionContext): Future[B]
+    def consume [B](c: Consumer[A, B]): Future[B]
+    def ==> [B](c: Consumer[A, B]): Future[B] = consume(c)
     def transform [B](fn: A => B): Producer[B]
     def filter(fn: A => Boolean): Producer[A]
     def filterNot(fn: A => Boolean): Producer[A]
     def fork(): Producer[A]
     def addListener(listener: A => Unit): Producer[A]
 
-    def ==> [B](c: Consumer[A, B])(implicit ec: ExecutionContext): Future[B] = consume(c)
+    def enableBuffer(): Unit
+    def disableBuffer(): Unit
 }
 
 object Producer
@@ -37,6 +40,7 @@ object Producer
             val requested = mutable.Queue.empty[Promise[A]]
         }
         private var listeners = Vector.empty[A => Unit]
+        private var buffer: Option[Vector[A]] = None
 
         override def push(elem: Try[A]): Unit = {
             notifyListeners(elem)
@@ -62,11 +66,40 @@ object Producer
             }
         }
 
-        override def consume [B](c: Consumer[A, B])(implicit ec: ExecutionContext): Future[B] = {
+        override def consume [B](c: Consumer[A, B]): Future[B] = {
             publisher.subscribe(this)
-            val f = c.apply(this)
+            val f = c.consume(this)
+            import scala.concurrent.ExecutionContext.Implicits.global
             f.onComplete(_ => publisher.unsubscribe(this))
             f
+        }
+
+        override def enableBuffer(): Unit = synchronized {
+            if (buffer.isEmpty) {
+                buffer = Some(Vector.empty)
+                val consumer = new Consumer[A, Unit] {
+                    override def consume(p: Producer[A]): Future[Unit] = {
+                        import scala.concurrent.ExecutionContext.Implicits.global
+                        for {
+                            elem <- p.get()
+                            //TODO: synchronization required below:
+                            _ <- buffer match {
+                                case None => success()
+                                case Some(buf) =>
+                                    buffer = Some(buf :+ elem)
+                                    this.consume(p)
+                            }
+                        } yield ()
+                    }
+                }
+                this ==> consumer
+            }
+        }
+
+        override def disableBuffer(): Unit = synchronized {
+            if(buffer.nonEmpty) {
+                //TODO: implementation required
+            }
         }
 
         override def transform [B](fn: A => B): Producer[B] = {
