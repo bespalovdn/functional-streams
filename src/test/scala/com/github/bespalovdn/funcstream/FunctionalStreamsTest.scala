@@ -69,8 +69,7 @@ class FunctionalStreamsTest extends FlatSpec
         val res2 = stream <=> FConsumer{ stream => stream.read() }
         conn.pushNext()
         res2.await should be (6)
-
-        //TODO: to be continued
+        conn.getNextElem should be (7)
     }
 
     it should "check if forking works" in {
