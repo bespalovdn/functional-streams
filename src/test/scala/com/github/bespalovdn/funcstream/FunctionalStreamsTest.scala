@@ -88,9 +88,26 @@ class FunctionalStreamsTest extends FlatSpec
         res2.await() should be (2)
         res3.await() should be (2)
 
-        val res4 = stream <=> FConsumer{ stream => stream.read() }
+        val res = stream <=> FConsumer{ stream => stream.read() }
         conn.pushNext()
-        res4.await() should be (3)
+        res.await() should be (3)
+
+        val consumer45: FConsumer[Int, Int, Unit] = FConsumer {
+            stream => for {
+                a <- stream.read()
+                _ <- Future{ a should be (4) }
+                a <- stream.read()
+                _ <- Future{ a should be (5) }
+            } yield ()
+        }
+
+        val res4 = stream <=> consumer45
+        val res5 = stream <=> consumer45
+        conn.pushNext()
+        conn.pushNext()
+        res4.await()
+        res5.await()
+        conn.getNextElem should be (6)
     }
 
 //    it should "check if piping functionality works" in {
