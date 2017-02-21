@@ -50,7 +50,7 @@ class FunctionalStreamsTest extends FlatSpec
         }
     }
 
-    it should "check if stream consumes input from producer when subscribed only" in {
+    it should "check if stream consumes input from producer, when subscribed only" in {
         val conn = new TestConnection
         val stream = FStream(conn)
 
