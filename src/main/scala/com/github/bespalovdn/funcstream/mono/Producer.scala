@@ -7,6 +7,7 @@ import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
 import scala.concurrent.duration.Duration
+import scala.concurrent.stm._
 import scala.concurrent.{Future, Promise}
 import scala.util.{Success, Try}
 
@@ -40,7 +41,7 @@ object Producer
             val requested = mutable.Queue.empty[Promise[A]]
         }
         private var listeners = Vector.empty[A => Unit]
-        private var buffer: Option[Vector[A]] = None
+        private var buffer: Ref[Option[Vector[A]]] = Ref(None)
 
         override def push(elem: Try[A]): Unit = {
             notifyListeners(elem)
@@ -74,31 +75,35 @@ object Producer
             f
         }
 
-        override def enableBuffer(): Unit = synchronized {
-            if (buffer.isEmpty) {
-                buffer = Some(Vector.empty)
-                val consumer = new Consumer[A, Unit] {
-                    override def consume(p: Producer[A]): Future[Unit] = {
-                        import scala.concurrent.ExecutionContext.Implicits.global
-                        for {
-                            elem <- p.get()
-                            //TODO: synchronization required below:
-                            _ <- buffer match {
+        override def enableBuffer(): Unit = {
+            def consumer = new Consumer[A, Unit] {
+                override def consume(p: Producer[A]): Future[Unit] = {
+                    import scala.concurrent.ExecutionContext.Implicits.global
+                    for {
+                        elem <- p.get()
+                        //TODO: synchronization required below:
+                        _ <- atomic { implicit trans =>
+                            buffer() match {
                                 case None => success()
                                 case Some(buf) =>
-                                    buffer = Some(buf :+ elem)
+                                    buffer() = Some(buf :+ elem)
                                     this.consume(p)
                             }
-                        } yield ()
-                    }
+                        }
+                    } yield ()
                 }
-                this ==> consumer
+            }
+            atomic { implicit trans =>
+                if (buffer().isEmpty) {
+                    buffer() = Some(Vector.empty)
+                    this ==> consumer
+                }
             }
         }
 
-        override def disableBuffer(): Unit = synchronized {
-            if(buffer.nonEmpty) {
-                //TODO: implementation required
+        override def disableBuffer(): Unit = atomic { implicit trans =>
+            if(buffer().nonEmpty) {
+                buffer() = None
             }
         }
 
