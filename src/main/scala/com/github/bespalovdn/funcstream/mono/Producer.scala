@@ -1,13 +1,13 @@
 package com.github.bespalovdn.funcstream.mono
 
-import com.github.bespalovdn.funcstream.ext.FutureUtils._
+import java.util.concurrent.atomic.AtomicBoolean
+
 import com.github.bespalovdn.funcstream.ext.TimeoutSupport
 import com.github.bespalovdn.funcstream.impl.PublisherProxy
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
 import scala.concurrent.duration.Duration
-import scala.concurrent.stm._
 import scala.concurrent.{Future, Promise}
 import scala.util.{Success, Try}
 
@@ -36,12 +36,13 @@ object Producer
         with Subscriber[A]
         with TimeoutSupport
     {
-        private object elements { //TODO: should be replaced with RxScala's Observable
+        private object elements {
             val available = mutable.Queue.empty[Try[A]]
             val requested = mutable.Queue.empty[Promise[A]]
         }
         private var listeners = Vector.empty[A => Unit]
-        private var buffer: Ref[Option[Vector[A]]] = Ref(None)
+        private val bufferingEnabled = new AtomicBoolean(false)
+        private val hasActiveConsumer = new AtomicBoolean(false)
 
         override def push(elem: Try[A]): Unit = {
             notifyListeners(elem)
@@ -67,44 +68,33 @@ object Producer
             }
         }
 
-        override def pipeTo [B](c: Consumer[A, B]): Future[B] = {
-            //TODO: apply buffer first
+        override def pipeTo [B](c: Consumer[A, B]): Future[B] = bufferingEnabled.synchronized {
             import scala.concurrent.ExecutionContext.Implicits.global
+            hasActiveConsumer.set(true)
             val f = c.consume(this)
             publisher.subscribe(this)
-            f.onComplete(_ => publisher.unsubscribe(this))
+            f.onComplete {
+                case _ =>
+                    hasActiveConsumer.set(false)
+                    bufferingEnabled.synchronized {
+                        if (!bufferingEnabled.get())
+                            publisher.unsubscribe(this)
+                    }
+            }
             f
         }
 
-        override def enableBuffer(): Unit = {
-            def consumer = new Consumer[A, Unit] {
-                override def consume(p: Producer[A]): Future[Unit] = {
-                    import scala.concurrent.ExecutionContext.Implicits.global
-                    for {
-                        elem <- p.get()
-                        //TODO: synchronization required below:
-                        _ <- atomic { implicit trans =>
-                            buffer() match {
-                                case None => success()
-                                case Some(buf) =>
-                                    buffer() = Some(buf :+ elem)
-                                    this.consume(p)
-                            }
-                        }
-                    } yield ()
-                }
-            }
-            atomic { implicit trans =>
-                if (buffer().isEmpty) {
-                    buffer() = Some(Vector.empty)
-                    this ==> consumer
-                }
+        override def enableBuffer(): Unit = bufferingEnabled.synchronized {
+            if(!bufferingEnabled.get()){
+                bufferingEnabled.set(true)
+                publisher.subscribe(this)
             }
         }
 
-        override def disableBuffer(): Unit = atomic { implicit trans =>
-            if(buffer().nonEmpty) {
-                buffer() = None
+        override def disableBuffer(): Unit = bufferingEnabled.synchronized {
+            if(bufferingEnabled.get()){
+                bufferingEnabled.set(false)
+                publisher.unsubscribe(this)
             }
         }
 
