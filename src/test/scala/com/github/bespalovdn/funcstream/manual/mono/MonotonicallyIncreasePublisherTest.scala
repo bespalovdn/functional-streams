@@ -51,14 +51,14 @@ object MonotonicallyIncreasePublisherTest
 
         println("Producer's output:")
         var result: Future[Unit] = {
-            producer.fork().consume(consumer("B", 3) >> consumer("C", 3))
-            producer.fork().consume(consumer("A", 10))
+            producer.fork().pipeTo(consumer("B", 3) >> consumer("C", 3))
+            producer.fork().pipeTo(consumer("A", 10))
         }
         Await.ready(result, Duration.Inf)
         Thread.sleep(3000)
         result = {
-            producer.fork().consume(consumer("B", 3) >> consumer("C", 3))
-            producer.fork().consume(consumer("A", 10))
+            producer.fork().pipeTo(consumer("B", 3) >> consumer("C", 3))
+            producer.fork().pipeTo(consumer("A", 10))
         }
         Await.ready(result, Duration.Inf)
 

@@ -13,8 +13,8 @@ import scala.util.{Success, Try}
 
 trait Producer[A] {
     def get(timeout: Duration = null): Future[A]
-    def consume [B](c: Consumer[A, B]): Future[B]
-    def ==> [B](c: Consumer[A, B]): Future[B] = consume(c)
+    def pipeTo [B](c: Consumer[A, B]): Future[B]
+    def ==> [B](c: Consumer[A, B]): Future[B] = pipeTo(c)
     def transform [B](fn: A => B): Producer[B]
     def filter(fn: A => Boolean): Producer[A]
     def filterNot(fn: A => Boolean): Producer[A]
@@ -67,7 +67,7 @@ object Producer
             }
         }
 
-        override def consume [B](c: Consumer[A, B]): Future[B] = {
+        override def pipeTo [B](c: Consumer[A, B]): Future[B] = {
             publisher.subscribe(this)
             val f = c.consume(this)
             import scala.concurrent.ExecutionContext.Implicits.global

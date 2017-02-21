@@ -42,7 +42,7 @@ object StdInTest
             }
 
         println("Input some numbers:")
-        val result: Future[Int] = producer.transform(toInt).filter(even).consume(consumer)
+        val result: Future[Int] = producer.transform(toInt).filter(even) ==> consumer
         println("SUM OF EVENS IS: " + Await.result(result, Duration.Inf))
     }
 }
