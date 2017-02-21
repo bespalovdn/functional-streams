@@ -15,7 +15,7 @@ object FStreamStdInTest
 {
     class StdEndpoint extends Connection[String, String]{
         private val executorContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(2))
-        private val subscribers = mutable.ListBuffer.empty[Subscriber[String]]
+        private val subscribers = mutable.Set.empty[Subscriber[String]]
 
         override def subscribe(subscriber: Subscriber[String]): Unit = subscribers += subscriber
         override def unsubscribe(subscriber: Subscriber[String]): Unit = subscribers -= subscriber
