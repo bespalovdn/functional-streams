@@ -68,6 +68,7 @@ object Producer
         }
 
         override def pipeTo [B](c: Consumer[A, B]): Future[B] = {
+            //TODO: apply buffer first
             import scala.concurrent.ExecutionContext.Implicits.global
             val f = c.consume(this)
             publisher.subscribe(this)
