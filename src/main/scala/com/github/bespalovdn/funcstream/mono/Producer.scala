@@ -113,11 +113,12 @@ object Producer
         }
 
         override def filter(fn: A => Boolean): Producer[A] = {
-            val proxy = new Proxy(publisher){
+            val proxy = new PublisherProxy[A, A]{
+                override def upstream: Publisher[A] = publisher
                 override def push(elem: Try[A]): Unit = {
                     notifyListeners(elem)
                     elem match {
-                        case Success(a) if fn(a) => super.push(elem)
+                        case Success(a) if fn(a) => forEachSubscriber(_.push(elem))
                         case _ => // do nothing
                     }
                 }
@@ -127,7 +128,7 @@ object Producer
 
         override def filterNot(fn: A => Boolean): Producer[A] = filter(a => !fn(a))
 
-        override def fork(): Producer[A] = new ProducerImpl[A](new Proxy(publisher))
+        override def fork(): Producer[A] = new ProducerImpl[A](publisher)
 
         override def addListener(listener: A => Unit): Producer[A] = {
             listeners :+= listener
@@ -136,10 +137,6 @@ object Producer
 
         private def notifyListeners(elem: Try[A]): Unit = {
             elem.foreach(a => listeners.foreach(listener => listener(a)))
-        }
-
-        private class Proxy(val upstream: Publisher[A]) extends PublisherProxy[A, A]{
-            override def push(elem: Try[A]): Unit = forEachSubscriber(_.push(elem))
         }
     }
 }

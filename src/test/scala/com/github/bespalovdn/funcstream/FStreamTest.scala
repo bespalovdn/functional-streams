@@ -175,22 +175,22 @@ class FStreamTest extends UT
         res7.await() should be (7)
     }
 
-    it should "check if buffering functionality works (2)" in {
-        val conn = new TestConnection
-        val stream = FStream(conn)
-        val forked = stream.fork()
-
-        forked.preSubscribe(keepSubscribed = true)
-        val forkedForked = forked.fork()
-
-        conn.pushNext()
-
-        var res1 = forked <=> FConsumer { stream => stream.read() }
-        res1.await() should be(1)
-
-        res1 = forkedForked <=> FConsumer { stream => stream.read() }
-        res1.await() should be(1)
-    }
+//    it should "check if buffering functionality works (2)" in {
+//        val conn = new TestConnection
+//        val stream = FStream(conn)
+//        val forked = stream.fork()
+//
+//        forked.preSubscribe(keepSubscribed = true)
+//        val forkedForked = forked.fork()
+//
+//        conn.pushNext()
+//
+//        var res1 = forked <=> FConsumer { stream => stream.read() }
+//        res1.await() should be(1)
+//
+//        res1 = forkedForked <=> FConsumer { stream => stream.read() }
+//        res1.await() should be(1)
+//    }
 
     it should "check if monadic consumer works" in {
         val conn = new TestConnection
