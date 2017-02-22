@@ -18,8 +18,7 @@ trait FStream[A, B]{
     def filterNot(fn: A => Boolean): FStream[A, B]
     def fork(): FStream[A, B]
     def addListener(listener: A => Unit): FStream[A, B]
-    def preSubscribe(keepSubscribed: Boolean): Unit
-    def preSubscriptionStop(): Unit
+    def preSubscribe(): Unit
 }
 
 object FStream
@@ -59,8 +58,7 @@ object FStream
             this
         }
 
-        override def preSubscribe(keepSubscribed: Boolean): Unit = upStream.preSubscribe(keepSubscribed)
-        override def preSubscriptionStop(): Unit = upStream.preSubscriptionStop()
+        override def preSubscribe(): Unit = upStream.preSubscribe()
 
         private def producer2stream[C, D](producer: Producer[C], transformUp: D => B): FStream[C, D] = {
             def getPublisher(producer: Producer[C]): Publisher[C] = producer.asInstanceOf[ProducerImpl[C]].publisher

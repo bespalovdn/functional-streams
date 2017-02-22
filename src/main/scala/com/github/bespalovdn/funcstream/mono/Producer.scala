@@ -1,7 +1,5 @@
 package com.github.bespalovdn.funcstream.mono
 
-import java.util.concurrent.atomic.AtomicBoolean
-
 import com.github.bespalovdn.funcstream.ext.TimeoutSupport
 import com.github.bespalovdn.funcstream.impl.PublisherProxy
 import org.slf4j.{Logger, LoggerFactory}
@@ -21,8 +19,7 @@ trait Producer[A] {
     def fork(): Producer[A]
     def addListener(listener: A => Unit): Producer[A]
 
-    def preSubscribe(keepSubscribed: Boolean): Unit
-    def preSubscriptionStop(): Unit
+    def preSubscribe(): Unit
 }
 
 object Producer
@@ -41,8 +38,6 @@ object Producer
             val requested = mutable.Queue.empty[Promise[A]]
         }
         private var listeners = Vector.empty[A => Unit]
-        private var pinSubscribed: Option[Boolean] = None //Some(true) to keep subscribed, Some(false) to unsubscribe together with first consumer
-        private val hasActiveConsumer = new AtomicBoolean(false)
 
         override def push(elem: Try[A]): Unit = {
             notifyListeners(elem)
@@ -70,27 +65,13 @@ object Producer
 
         override def pipeTo [B](c: Consumer[A, B]): Future[B] = {
             import scala.concurrent.ExecutionContext.Implicits.global
-            hasActiveConsumer.set(true)
-            val f = c.consume(this)
             publisher.subscribe(this)
-            f.onComplete{ _ =>
-                hasActiveConsumer.set(false)
-                if(!pinSubscribed.getOrElse(false))
-                    publisher.unsubscribe(this)
-            }
+            val f = c.consume(this)
+            f.onComplete(_ => publisher.unsubscribe(this))
             f
         }
 
-        override def preSubscribe(keepSubscribed: Boolean): Unit = {
-            this.pinSubscribed = Some(keepSubscribed)
-            publisher.subscribe(this)
-        }
-
-        override def preSubscriptionStop(): Unit = {
-            pinSubscribed = None
-            if(!hasActiveConsumer.get())
-                publisher.unsubscribe(this)
-        }
+        override def preSubscribe(): Unit = publisher.subscribe(this)
 
         override def transform [B](fn: A => B): Producer[B] = {
             val proxy = new PublisherProxy[A, B]{
