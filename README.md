@@ -46,7 +46,7 @@ this code will look like:
 fnA flatMap (_ => fnB) flatMap (_ => fnC)
 ```
 
-Of course you may use **for**-comprehensions such kind of thing, but
+Of course you may use **for**-comprehensions for such kind of things, but
 your code will grow down the page. Mostly you will combine both ways.
 
 There is also:
