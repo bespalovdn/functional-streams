@@ -3,25 +3,60 @@
 This library provides the model and small set of tools 
 to deal with async IO in functional style, without inversion of control.
 
-**functional-streams** was created to eliminate complexities accompanying
+**functional-streams** (**FS**) was created to eliminate complexities accompanying
 with implementation the client/server async request-response protocols.
 
-**functional-streams** is not dedicated to some concrete protocol or 
+**FS** is not dedicated to some concrete protocol or 
 implementation. It's just a model, which provides abilities to create
-layered architecture for request/response processing code. As a result
-the code becomes easy to read, easy to extend, and easy to test.
+layered architecture for request/response processing code. It allows
+to write the code in functional style, resulting with more clean code 
+that easy to read, easy to extend, and easy to test.
 
-If you're familiar with **Netty**'s architecture, then you could find some 
-similarities here, in **functional-streams**. However, this is not 
-the same thing. 
+The idea is to wrap the code dealing with IO around Scala's **Future**.
+There is trait FutureUtils which extends Future's interface with 
+number of useful methods. Most of them are just synonyms for existing methods,
+and introduced in order to emphasize your intentions. 
+For example, there is method-operator **>>=** which is synonym for **flatMap**.
+So, instead of
 
-**Netty** gives you ability to build the chain of filters 
-to transform low-level bytes of data to the objects you're wish to deal with.
-Then you register the callback-handler, to process all the business logic
-asynchronously, by using netty- future listeners. This is great library, but 
-callback-style code quickly becomes hard to understand, and hard to maintain.
-Your business logic becomes spread across the callback-handlers.
-This is the problem known as "inversion of control".
+```
+fnA flatMap fnB flatMap fnC
+```
+
+with >>= operator code will look like:
+
+```
+fnA >>= fnB >>= fnC
+```
+
+which is visually more notable what is going on here. Especially, when
+such code is going to grow.
+
+Another example with operator **>>** which works like a regular **flatMap**, 
+but ignores it's input parameter:
+
+```
+fnA >> fnB >> fnC
+```
+
+Effectively, it's way to chain your futures in sequence. Using **flatMap** 
+this code will look like:
+
+```
+fnA flatMap (_ => fnB) flatMap (_ => fnC)
+```
+
+Of course you may use **for**-comprehensions such kind of thing, but
+your code will grow down the page. Mostly you will combine both ways.
+
+There is also:
+* operator **<|>** which works like logical *OR* for two futures
+* method **await** which is analog of *Await.result*
+* methods **success** and **fail**
+* and other useful things
+
+
+
 
 =====
 
