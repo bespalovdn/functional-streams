@@ -2,12 +2,11 @@ package com.github.bespalovdn.funcstream.mono
 
 import com.github.bespalovdn.funcstream.ext.TimeoutSupport
 import com.github.bespalovdn.funcstream.impl.PublisherProxy
-import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}
-import scala.util.{Success, Try}
+import scala.util.{Failure, Success, Try}
 
 trait Producer[A] {
     def get(timeout: Duration = null): Future[A]
@@ -25,8 +24,6 @@ trait Producer[A] {
 object Producer
 {
     def apply[A](publisher: Publisher[A]): Producer[A] = new ProducerImpl[A](publisher)
-
-    private lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
     private[funcstream] class ProducerImpl[A](val publisher: Publisher[A])
         extends Producer[A]
@@ -84,8 +81,7 @@ object Producer
                             subscriber.push(transformed)
                         }catch{
                             case t: Throwable =>
-                                logger.error(s"Failed to transform value: [$elem].", t)
-                                throw t
+                                subscriber.push(Failure(t))
                         }
                     }
                 }
