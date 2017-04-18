@@ -16,7 +16,7 @@ trait Producer[A] {
     def filter(fn: A => Boolean): Producer[A]
     def filterNot(fn: A => Boolean): Producer[A]
     def fork(): Producer[A]
-    def addListener(listener: A => Unit): Producer[A]
+    def addListener(listener: Try[A] => Unit): Producer[A]
 
     def preSubscribe(): Unit
 }
@@ -34,7 +34,7 @@ object Producer
             val available = mutable.Queue.empty[Try[A]]
             val requested = mutable.Queue.empty[Promise[A]]
         }
-        private var listeners = Vector.empty[A => Unit]
+        private var listeners = Vector.empty[Try[A] => Unit]
 
         override def push(elem: Try[A]): Unit = {
             notifyListeners(elem)
@@ -107,13 +107,13 @@ object Producer
 
         override def fork(): Producer[A] = new ProducerImpl[A](publisher)
 
-        override def addListener(listener: A => Unit): Producer[A] = {
+        override def addListener(listener: Try[A] => Unit): Producer[A] = {
             listeners :+= listener
             this
         }
 
         private def notifyListeners(elem: Try[A]): Unit = {
-            elem.foreach(a => listeners.foreach(listener => listener(a)))
+            listeners.foreach(listener => listener(elem))
         }
     }
 }

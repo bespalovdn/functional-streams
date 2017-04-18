@@ -17,7 +17,7 @@ trait FStream[A, B]{
     def filter(fn: A => Boolean): FStream[A, B]
     def filterNot(fn: A => Boolean): FStream[A, B]
     def fork(): FStream[A, B]
-    def addListener(listener: A => Unit): FStream[A, B]
+    def addListener(listener: Try[A] => Unit): FStream[A, B]
     def preSubscribe(): Unit
 }
 
@@ -53,7 +53,7 @@ object FStream
 
         override def fork(): FStream[A, B] = producer2stream(upStream.fork(), identity)
 
-        override def addListener(listener: (A) => Unit): FStream[A, B] = {
+        override def addListener(listener: Try[A] => Unit): FStream[A, B] = {
             upStream.addListener(listener)
             this
         }
