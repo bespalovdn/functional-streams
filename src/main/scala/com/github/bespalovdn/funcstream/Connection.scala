@@ -4,6 +4,6 @@ import com.github.bespalovdn.funcstream.mono.Publisher
 
 import scala.concurrent.Future
 
-trait Connection[A, B] extends Publisher[A]{
-    def write(elem: B): Future[Unit]
+trait Connection[R, W] extends Publisher[R]{
+    def write(elem: W): Future[Unit]
 }
