@@ -6,7 +6,7 @@ import com.github.bespalovdn.funcstream.impl.PublisherProxy
 import scala.collection.mutable
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}
-import scala.util.{Failure, Success, Try}
+import scala.util.{Success, Try}
 
 trait Producer[A] {
     def get(timeout: Duration = null): Future[A]
@@ -75,15 +75,8 @@ object Producer
                 override def upstream: Publisher[A] = publisher
                 override def push(elem: Try[A]): Unit = {
                     notifyListeners(elem)
-                    forEachSubscriber{ subscriber =>
-                        try{
-                            val transformed: Try[B] = elem.map(fn)
-                            subscriber.push(transformed)
-                        }catch{
-                            case t: Throwable =>
-                                subscriber.push(Failure(t))
-                        }
-                    }
+                    val transformed: Try[B] = elem.map(fn)
+                    forEachSubscriber(_.push(transformed))
                 }
             }
             new ProducerImpl[B](proxy)
