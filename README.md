@@ -52,3 +52,5 @@ to work with them. Especially if we want to finally consume some `B` type
 (so we have to transform `A` type to `B` ), or filter out some elements, 
 or build complex logic on consumer.
 
+...
+TODO: to be continued
