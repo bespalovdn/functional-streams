@@ -8,65 +8,65 @@ import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 import scala.util.Try
 
-trait FStream[A, B]{
-    def read(timeout: Duration = null): Future[A]
-    def write(elem: B): Future[Unit]
-    def consume [C](consumer: FConsumer[A, B, C]): Future[C]
-    def <=> [C](consumer: FConsumer[A, B, C]): Future[C] = consume(consumer)
-    def transform [C, D](down: A => C, up: D => B): FStream[C, D]
-    def filter(fn: A => Boolean): FStream[A, B]
-    def filterNot(fn: A => Boolean): FStream[A, B]
-    def fork(): FStream[A, B]
-    def addListener(listener: A => Unit): FStream[A, B]
+trait FStream[R, W]{
+    def read(timeout: Duration = null): Future[R]
+    def write(elem: W): Future[Unit]
+    def consume [C](consumer: FConsumer[R, W, C]): Future[C]
+    def <=> [C](consumer: FConsumer[R, W, C]): Future[C] = consume(consumer)
+    def transform [C, D](down: R => C, up: D => W): FStream[C, D]
+    def filter(fn: R => Boolean): FStream[R, W]
+    def filterNot(fn: R => Boolean): FStream[R, W]
+    def fork(): FStream[R, W]
+    def addListener(listener: Try[R] => Unit): FStream[R, W]
     def preSubscribe(): Unit
 }
 
 object FStream
 {
-    def apply[A, B](connection: Connection[A, B]): FStream[A, B] = new FStreamImpl[A, B](connection)
+    def apply[R, W](connection: Connection[R, W]): FStream[R, W] = new FStreamImpl[R, W](connection)
 
-    private class FStreamImpl[A, B](connection: Connection[A, B])
-        extends FStream[A, B]
+    private class FStreamImpl[R, W](connection: Connection[R, W])
+        extends FStream[R, W]
     {
-        private val upStream: Producer[A] = Producer(connection)
+        private val upStream: Producer[R] = Producer(connection)
 
-        override def read(timeout: Duration): Future[A] = upStream.get(timeout)
+        override def read(timeout: Duration): Future[R] = upStream.get(timeout)
 
-        override def write(elem: B): Future[Unit] = connection.write(elem)
+        override def write(elem: W): Future[Unit] = connection.write(elem)
 
-        override def consume[C](c: FConsumer[A, B, C]): Future[C] = {
-            val consumer = Consumer[A, C] { _ => c.apply(this) }
+        override def consume[C](c: FConsumer[R, W, C]): Future[C] = {
+            val consumer = Consumer[R, C] { _ => c.apply(this) }
             upStream ==> consumer
         }
 
-        override def transform [C, D](down: A => C, up: D => B): FStream[C, D] = {
+        override def transform [C, D](down: R => C, up: D => W): FStream[C, D] = {
             val transformed: Producer[C] = upStream.transform(down)
             producer2stream(transformed, up)
         }
 
-        override def filter(fn: (A) => Boolean): FStream[A, B] = {
+        override def filter(fn: (R) => Boolean): FStream[R, W] = {
             val filtered = upStream.filter(fn)
             producer2stream(filtered, identity)
         }
 
-        override def filterNot(fn: A => Boolean): FStream[A, B] = filter(a => !fn(a))
+        override def filterNot(fn: R => Boolean): FStream[R, W] = filter(a => !fn(a))
 
-        override def fork(): FStream[A, B] = producer2stream(upStream.fork(), identity)
+        override def fork(): FStream[R, W] = producer2stream(upStream.fork(), identity)
 
-        override def addListener(listener: (A) => Unit): FStream[A, B] = {
+        override def addListener(listener: Try[R] => Unit): FStream[R, W] = {
             upStream.addListener(listener)
             this
         }
 
         override def preSubscribe(): Unit = upStream.preSubscribe()
 
-        private def producer2stream[C, D](producer: Producer[C], transformUp: D => B): FStream[C, D] = {
+        private def producer2stream[C, D](producer: Producer[C], transformUp: D => W): FStream[C, D] = {
             def getPublisher(producer: Producer[C]): Publisher[C] = producer.asInstanceOf[ProducerImpl[C]].publisher
             def toStream(producer: Producer[C]): FStream[C, D] = new FStreamImpl[C, D](new ProxyEndPoint(getPublisher(producer), transformUp))
             toStream(producer)
         }
 
-        private class ProxyEndPoint[C, D](val upstream: Publisher[C], transformUp: D => B) extends Connection[C, D] with PublisherProxy[C, C] {
+        private class ProxyEndPoint[C, D](val upstream: Publisher[C], transformUp: D => W) extends Connection[C, D] with PublisherProxy[C, C] {
             override def write(elem: D): Future[Unit] = connection.write(transformUp(elem))
             override def push(elem: Try[C]): Unit = forEachSubscriber(_.push(elem))
         }

@@ -2,7 +2,6 @@ package com.github.bespalovdn.funcstream.mono
 
 import com.github.bespalovdn.funcstream.ext.TimeoutSupport
 import com.github.bespalovdn.funcstream.impl.PublisherProxy
-import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
 import scala.concurrent.duration.Duration
@@ -17,7 +16,7 @@ trait Producer[A] {
     def filter(fn: A => Boolean): Producer[A]
     def filterNot(fn: A => Boolean): Producer[A]
     def fork(): Producer[A]
-    def addListener(listener: A => Unit): Producer[A]
+    def addListener(listener: Try[A] => Unit): Producer[A]
 
     def preSubscribe(): Unit
 }
@@ -25,8 +24,6 @@ trait Producer[A] {
 object Producer
 {
     def apply[A](publisher: Publisher[A]): Producer[A] = new ProducerImpl[A](publisher)
-
-    private lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
     private[funcstream] class ProducerImpl[A](val publisher: Publisher[A])
         extends Producer[A]
@@ -37,7 +34,7 @@ object Producer
             val available = mutable.Queue.empty[Try[A]]
             val requested = mutable.Queue.empty[Promise[A]]
         }
-        private var listeners = Vector.empty[A => Unit]
+        private var listeners = Vector.empty[Try[A] => Unit]
 
         override def push(elem: Try[A]): Unit = {
             notifyListeners(elem)
@@ -78,16 +75,8 @@ object Producer
                 override def upstream: Publisher[A] = publisher
                 override def push(elem: Try[A]): Unit = {
                     notifyListeners(elem)
-                    forEachSubscriber{ subscriber =>
-                        try{
-                            val transformed: Try[B] = elem.map(fn)
-                            subscriber.push(transformed)
-                        }catch{
-                            case t: Throwable =>
-                                logger.error(s"Failed to transform value: [$elem].", t)
-                                throw t
-                        }
-                    }
+                    val transformed: Try[B] = elem.map(fn)
+                    forEachSubscriber(_.push(transformed))
                 }
             }
             new ProducerImpl[B](proxy)
@@ -111,13 +100,13 @@ object Producer
 
         override def fork(): Producer[A] = new ProducerImpl[A](publisher)
 
-        override def addListener(listener: A => Unit): Producer[A] = {
+        override def addListener(listener: Try[A] => Unit): Producer[A] = {
             listeners :+= listener
             this
         }
 
         private def notifyListeners(elem: Try[A]): Unit = {
-            elem.foreach(a => listeners.foreach(listener => listener(a)))
+            listeners.foreach(listener => listener(elem))
         }
     }
 }

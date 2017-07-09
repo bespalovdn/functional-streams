@@ -4,26 +4,26 @@ import com.github.bespalovdn.funcstream.ext.FutureUtils._
 
 import scala.concurrent.{ExecutionContext, Future}
 
-trait FConsumer[A, B, X] extends (FStream[A, B] => Future[X]) {
-    def >> [Y](cY: => FConsumer[A, B, Y])(implicit ec: ExecutionContext): FConsumer[A, B, Y] = FConsumer {
-        stream => this.apply(stream) >> cY.apply(stream)
+trait FConsumer[R, W, A] extends (FStream[R, W] => Future[A]) {
+    def >> [B](cB: => FConsumer[R, W, B])(implicit ec: ExecutionContext): FConsumer[R, W, B] = FConsumer {
+        stream => this.apply(stream) >> cB.apply(stream)
     }
-    def >>= [Y](cXY: X => FConsumer[A, B, Y])(implicit ec: ExecutionContext): FConsumer[A, B, Y] = FConsumer {
-        stream => this.apply(stream) >>= (x => cXY(x).apply(stream))
+    def >>= [B](cAB: A => FConsumer[R, W, B])(implicit ec: ExecutionContext): FConsumer[R, W, B] = FConsumer {
+        stream => this.apply(stream) >>= (x => cAB(x).apply(stream))
     }
-    def map[Y](fn: X => Y)(implicit ec: ExecutionContext): FConsumer[A, B, Y] = FConsumer{
+    def map[B](fn: A => B)(implicit ec: ExecutionContext): FConsumer[R, W, B] = FConsumer{
         stream => this.apply(stream).map(fn)
     }
-    def flatMap[Y](fn: X => FConsumer[A, B, Y])(implicit ec: ExecutionContext): FConsumer[A, B, Y] = this >>= fn
+    def flatMap[B](fn: A => FConsumer[R, W, B])(implicit ec: ExecutionContext): FConsumer[R, W, B] = this >>= fn
 }
 
 object FConsumer
 {
-    def apply[A, B, X](fn: FStream[A, B] => Future[X]): FConsumer[A, B, X] = new FConsumer[A, B, X]{
-        override def apply(stream: FStream[A, B]): Future[X] = fn(stream)
+    def apply[R, W, A](fn: FStream[R, W] => Future[A]): FConsumer[R, W, A] = new FConsumer[R, W, A]{
+        override def apply(stream: FStream[R, W]): Future[A] = fn(stream)
     }
 
-    def empty[A, B]: FConsumer[A, B, Unit] = FConsumer{ stream => success() }
-    def empty[A, B, C](c: => C)(implicit ec: ExecutionContext): FConsumer[A, B, C] = FConsumer{ stream => success(c) }
+    def empty[R, W]: FConsumer[R, W, Unit] = FConsumer{ stream => success() }
+    def empty[R, W, A](a: => A)(implicit ec: ExecutionContext): FConsumer[R, W, A] = FConsumer{ stream => success(a) }
 }
 
