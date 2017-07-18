@@ -1,8 +1,16 @@
 # functional-streams
 
-This library provides the model and small set of tools 
-to deal with async IO in functional style, without inversion of control.
+**functional-streams** (**FS**) was created to eliminate complexities
+arising when dealing with asynchronous IO.
 
+**FS** relies heavily on Scala's *Future*. It implies you have to fully
+understand how *Future* works, before continue reading.
+
+
+
+
+
+-------------------------------------------------------------------------
 **functional-streams** (**FS**) was created to eliminate complexities accompanying
 with implementation the client/server async request-response protocols.
 
