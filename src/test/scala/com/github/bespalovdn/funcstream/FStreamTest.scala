@@ -193,4 +193,16 @@ class FStreamTest extends UT
         conn.pushNext()
         sum7.await() should be (7)
     }
+
+    ignore should "check if invariance of FStream types works" in {
+        val streamSS: FStream[String, String] = ???
+        val streamOO: FStream[Object, Object] = ???
+
+        val a: Future[Object] = streamSS.read()
+        streamOO.write("Hello")
+
+        val consumerOS: FConsumer[Object, String, Unit] = ???
+        streamOO <=> consumerOS
+        streamSS <=> consumerOS
+    }
 }
