@@ -8,17 +8,17 @@ import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 import scala.util.Try
 
-trait FStream[-R, +W]{
-    def read[R1 <: R](timeout: Duration = null): Future[R1]
-    def write[W1 >: W](elem: W1): Future[Unit]
-    def consume [R1 <: R, W1 >: W, C](consumer: FConsumer[R1, W1, C]): Future[C]
-    def <=> [R1 <: R, W1 >: W, C](consumer: FConsumer[R1, W1, C]): Future[C] = consume(consumer)
-    def transform [R1 <: R, W1 >: W, C, D](down: R1 => C, up: D => W1): FStream[C, D]
-    def filter[R1 <: R](fn: R1 => Boolean): FStream[R, W]
-    def filterNot[R1 <: R](fn: R1 => Boolean): FStream[R, W]
+trait FStream[+R, -W]{
+    def read[R0 >: R](timeout: Duration = null): Future[R0]
+    def write[W1 <: W](elem: W1): Future[Unit]
+    def consume [R0 >: R, W1 <: W, C](consumer: FConsumer[R0, W1, C]): Future[C]
+    def <=> [R0 >: R, W1 <: W, C](consumer: FConsumer[R0, W1, C]): Future[C] = consume(consumer)
+    def transform [R0 >: R, W1 <: W, C, D](down: R0 => C, up: D => W1): FStream[C, D]
+    def filter(fn: R => Boolean): FStream[R, W]
+    def filterNot(fn: R => Boolean): FStream[R, W]
     def fork(): FStream[R, W]
-    def addListener[R1 <: R](listener: Try[R1] => Unit): FStream[R, W]
-    def addSuccessListener[R1 <: R](listener: R1 => Unit): FStream[R, W]
+    def addListener[R0 >: R](listener: Try[R0] => Unit): FStream[R, W]
+    def addSuccessListener[R0 >: R](listener: R0 => Unit): FStream[R, W]
     def preSubscribe(): Unit
 }
 
@@ -31,21 +31,22 @@ object FStream
     {
         private val upStream: Producer[_ <: R] = Producer(connection)
 
-        override def read[R1 >: R](timeout: Duration): Future[R1] = upStream.get(timeout)
+        override def read[R0 >: R](timeout: Duration): Future[R0] = upStream.get(timeout)
 
         override def write[W1 <: W](elem: W1): Future[Unit] = connection.write(elem)
 
-        override def consume[R1 <: R, W1 >: W, C](c: FConsumer[R1, W1, C]): Future[C] = {
+
+        override def consume [R0 >: R, W1 <: W, C](c: FConsumer[R0, W1, C]): Future[C] = {
             val consumer = Consumer[R, C] { _ => c.apply(this) }
             upStream ==> consumer
         }
 
-        override def transform [C, D](down: R => C, up: D => W): FStream[C, D] = {
+        override def transform [R0 >: R, W1 <: W, C, D](down: R0 => C, up: D => W1): FStream[C, D] = {
             val transformed: Producer[C] = upStream.transform(down)
             producer2stream(transformed, up)
         }
 
-        override def filter(fn: (R) => Boolean): FStream[R, W] = {
+        override def filter(fn: R => Boolean): FStream[R, W] = {
             val filtered = upStream.filter(fn)
             producer2stream(filtered, identity)
         }
@@ -54,12 +55,12 @@ object FStream
 
         override def fork(): FStream[R, W] = producer2stream(upStream.fork(), identity)
 
-        override def addListener(listener: Try[R] => Unit): FStream[R, W] = {
+        override def addListener[R0 >: R](listener: Try[R0] => Unit): FStream[R, W] = {
             upStream.addListener(listener)
             this
         }
 
-        override def addSuccessListener(listener: R => Unit): FStream[R, W] = {
+        override def addSuccessListener[R0 >: R](listener: R0 => Unit): FStream[R, W] = {
             upStream.addSuccessListener(listener)
             this
         }

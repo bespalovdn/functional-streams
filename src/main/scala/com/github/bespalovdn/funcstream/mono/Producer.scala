@@ -16,7 +16,7 @@ trait Producer[+A] {
     def filter(fn: A => Boolean): Producer[A]
     def filterNot(fn: A => Boolean): Producer[A]
     def fork(): Producer[A]
-    def addListener(listener: Try[A] => Unit): Producer[A]
+    def addListener[A0 >: A](listener: Try[A0] => Unit): Producer[A]
     def addSuccessListener(listener: A => Unit): Producer[A]
 
     def preSubscribe(): Unit
@@ -101,7 +101,7 @@ object Producer
 
         override def fork(): Producer[A] = new ProducerImpl[A](publisher)
 
-        override def addListener(listener: Try[A] => Unit): Producer[A] = {
+        override def addListener[A0 >: A](listener: Try[A0] => Unit): Producer[A] = {
             listeners :+= listener
             this
         }
