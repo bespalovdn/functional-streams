@@ -6,7 +6,7 @@ import com.github.bespalovdn.funcstream.impl.PublisherProxy
 import scala.collection.mutable
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}
-import scala.util.{Success, Try}
+import scala.util.{Failure, Success, Try}
 
 trait Producer[A] {
     def get(timeout: Duration = null): Future[A]
@@ -17,6 +17,7 @@ trait Producer[A] {
     def filterNot(fn: A => Boolean): Producer[A]
     def fork(): Producer[A]
     def addListener(listener: Try[A] => Unit): Producer[A]
+    def addSuccessListener(listener: A => Unit): Producer[A]
 
     def preSubscribe(): Unit
 }
@@ -103,6 +104,14 @@ object Producer
         override def addListener(listener: Try[A] => Unit): Producer[A] = {
             listeners :+= listener
             this
+        }
+
+        override def addSuccessListener(listener: A => Unit): Producer[A] = {
+            def filter(tA: Try[A]): Unit = tA match {
+                case Success(a) => listener(a)
+                case Failure(t) => // ignore
+            }
+            addListener(filter)
         }
 
         private def notifyListeners(elem: Try[A]): Unit = {
