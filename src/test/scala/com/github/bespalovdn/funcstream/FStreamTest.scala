@@ -42,7 +42,7 @@ class FStreamTest extends UT
         conn.pushNext()
         conn.getNextElem should be (3)
 
-        val res1 = stream <=> FConsumer{ stream => stream.read() }
+        val res1 = stream <=> FConsumer[Int, Int, Int]{ stream => stream.read() }
         conn.pushNext()
         res1.await should be (3)
         conn.getNextElem should be (4)
@@ -50,7 +50,7 @@ class FStreamTest extends UT
         conn.pushNext()
         conn.pushNext()
         conn.getNextElem should be (6)
-        val res2 = stream <=> FConsumer{ stream => stream.read() }
+        val res2 = stream <=> FConsumer[Int, Int, Int]{ stream => stream.read() }
         conn.pushNext()
         res2.await should be (6)
         conn.getNextElem should be (7)
@@ -61,22 +61,22 @@ class FStreamTest extends UT
         val stream = FStream(conn)
         val forkedStream = stream.fork()
 
-        val res1 = stream <=> FConsumer{ stream => stream.read() }
-        val fRes1 = forkedStream <=> FConsumer{ stream => stream.read() }
+        val res1 = stream <=> FConsumer[Int, Int, Int]{ stream => stream.read() }
+        val fRes1 = forkedStream <=> FConsumer[Int, Int, Int]{ stream => stream.read() }
         conn.pushNext()
         res1.await() should be (1)
         fRes1.await() should be (1)
 
-        val res2 = stream <=> FConsumer{ stream => stream.read() }
+        val res2 = stream <=> FConsumer[Int, Int, Int]{ stream => stream.read() }
         conn.pushNext()
         res2.await() should be (2)
 
-        val res3 = forkedStream <=> FConsumer{ stream => stream.read() }
+        val res3 = forkedStream <=> FConsumer[Int, Int, Int]{ stream => stream.read() }
         conn.pushNext()
         res3.await() should be (3)
 
-        val res4 = stream <=> FConsumer{ stream => stream.read() }
-        val fRes4 = forkedStream <=> FConsumer{ stream => stream.read() }
+        val res4 = stream <=> FConsumer[Int, Int, Int]{ stream => stream.read() }
+        val fRes4 = forkedStream <=> FConsumer[Int, Int, Int]{ stream => stream.read() }
         conn.pushNext()
         res4.await() should be (4)
         fRes4.await() should be (4)
@@ -89,15 +89,15 @@ class FStreamTest extends UT
         conn.pushNext()
         conn.getNextElem should be (2)
 
-        val res1 = stream.fork() <=> FConsumer{ stream => stream.read() }
-        val res2 = stream.fork() <=> FConsumer{ stream => stream.read() }
-        val res3 = stream.fork() <=> FConsumer{ stream => stream.read() }
+        val res1 = stream.fork() <=> FConsumer[Int, Int, Int]{ stream => stream.read() }
+        val res2 = stream.fork() <=> FConsumer[Int, Int, Int]{ stream => stream.read() }
+        val res3 = stream.fork() <=> FConsumer[Int, Int, Int]{ stream => stream.read() }
         conn.pushNext()
         res1.await() should be (2)
         res2.await() should be (2)
         res3.await() should be (2)
 
-        val res = stream <=> FConsumer{ stream => stream.read() }
+        val res = stream <=> FConsumer[Int, Int, Int]{ stream => stream.read() }
         conn.pushNext()
         res.await() should be (3)
 
@@ -125,11 +125,11 @@ class FStreamTest extends UT
         val forked = stream.fork()
         val forkedForked = forked.fork()
 
-        val res1 = forkedForked <=> FConsumer{ stream => stream.read() }
+        val res1 = forkedForked <=> FConsumer[Int, Int, Int]{ stream => stream.read() }
         conn.pushNext()
         res1.await() should be (1)
 
-        val res2 = forked <=> FConsumer{ stream => stream.read() }
+        val res2 = forked <=> FConsumer[Int, Int, Int]{ stream => stream.read() }
         conn.pushNext()
         res2.await() should be (2)
     }
@@ -139,20 +139,20 @@ class FStreamTest extends UT
         val stream = FStream(conn)
         val forked = stream.fork()
 
-        val res1 = stream <=> FConsumer{ stream => stream.read() }
+        val res1 = stream <=> FConsumer[Int, Int, Int]{ stream => stream.read() }
         conn.pushNext()
         res1.await() should be (1)
-        val res2 = forked <=> FConsumer{ stream => stream.read() }
+        val res2 = forked <=> FConsumer[Int, Int, Int]{ stream => stream.read() }
         conn.pushNext()
         res2.await() should be (2)
 
         forked.preSubscribe()
 
-        val res3 = stream <=> FConsumer{ stream => stream.read() }
+        val res3 = stream <=> FConsumer[Int, Int, Int]{ stream => stream.read() }
         conn.pushNext()
         res3.await() should be (3)
         conn.pushNext()
-        val res5 = stream <=> FConsumer{ stream => stream.read() }
+        val res5 = stream <=> FConsumer[Int, Int, Int]{ stream => stream.read() }
         conn.pushNext()
         res5.await() should be (5)
 
@@ -165,10 +165,10 @@ class FStreamTest extends UT
         }
         res345.await()
 
-        val res6 = stream <=> FConsumer{ stream => stream.read() }
+        val res6 = stream <=> FConsumer[Int, Int, Int]{ stream => stream.read() }
         conn.pushNext()
         res6.await() should be (6)
-        val res7 = forked <=> FConsumer{ stream => stream.read() }
+        val res7 = forked <=> FConsumer[Int, Int, Int]{ stream => stream.read() }
         conn.pushNext()
         res7.await() should be (7)
     }

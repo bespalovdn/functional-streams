@@ -37,7 +37,7 @@ object FStream
 
 
         override def consume [R0 >: R, W1 <: W, C](c: FConsumer[R0, W1, C]): Future[C] = {
-            val consumer = Consumer[R, C] { _ => c.apply(this) }
+            val consumer = Consumer[R, C] { _ => c.consume(this) }
             upStream ==> consumer
         }
 

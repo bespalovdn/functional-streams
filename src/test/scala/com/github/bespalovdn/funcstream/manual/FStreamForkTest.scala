@@ -46,7 +46,7 @@ object FStreamForkTest
                 if(nTimes > 0) {
                     stream.read() >>= { str =>
                         stream.write(s"$name: $str")
-                        consumer(name, nTimes - 1).apply(stream)
+                        consumer(name, nTimes - 1).consume(stream)
                     }
                 } else {
                     success()
