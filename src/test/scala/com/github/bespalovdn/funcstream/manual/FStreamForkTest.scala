@@ -56,14 +56,14 @@ object FStreamForkTest
 
         println("Producer's output:")
         var result: Future[Unit] = {
-            stream.fork().consume(consumer("B", 3) >> consumer("C", 3))
-            stream.fork().consume(consumer("A", 10))
+            stream.fork() <=> (consumer("B", 3) >> consumer("C", 3))
+            stream.fork() <=> consumer("A", 10)
         }
         Await.ready(result, Duration.Inf)
         Thread.sleep(3000)
         result = {
-            stream.fork().consume(consumer("B", 3) >> consumer("C", 3))
-            stream.fork().consume(consumer("A", 10))
+            stream.fork() <=> (consumer("B", 3) >> consumer("C", 3))
+            stream.fork() <=> consumer("A", 10)
         }
         Await.ready(result, Duration.Inf)
 

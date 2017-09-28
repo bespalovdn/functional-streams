@@ -46,7 +46,7 @@ object FStreamStdInTest
                     b <- stream.read()
                 } yield a + b
             }
-        val result: Future[Int] = stream.transform(toInt, identity[String]).filter(even).consume(consumer)
+        val result: Future[Int] = stream.transform(toInt, identity[String]).filter(even) <=> consumer
         println("SUM OF EVENS IS: " + Await.result(result, Duration.Inf))
     }
 }

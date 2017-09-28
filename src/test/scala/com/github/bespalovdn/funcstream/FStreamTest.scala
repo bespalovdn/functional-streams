@@ -24,7 +24,7 @@ class FStreamTest extends UT
             stream.read(timeout = 100.millisecond) >> success()
         }
 
-        val result: Future[Unit] = FStream(connection) consume consumer
+        val result: Future[Unit] = FStream(connection) <=> consumer
         // check if it's not complete instantly:
         result.value should be (None)
         // wait for a while (more than timeout in consumer) and check if result completed with TimeoutException:
