@@ -21,7 +21,7 @@ trait Producer[+A] {
     def addSuccessListener(listener: A => Unit): Producer[A]
 
     def preSubscribe(): Unit
-    def setDebugEnabled(enabled: Boolean)
+    def setDebugEnabled(enabled: Boolean): Producer[A]
 }
 
 object Producer
@@ -43,7 +43,10 @@ object Producer
 
         var isDebugEnabled: Boolean = _isDebugEnabled
 
-        override def setDebugEnabled(enabled: Boolean): Unit = isDebugEnabled = enabled
+        override def setDebugEnabled(enabled: Boolean): Producer[A] = {
+            isDebugEnabled = enabled
+            this
+        }
 
         override def push(elem: Try[A]): Unit = {
             debug("push: " + elem)

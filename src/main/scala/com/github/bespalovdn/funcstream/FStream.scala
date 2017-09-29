@@ -19,7 +19,7 @@ trait FStream[+R, -W]{
     def addListener[R0 >: R](listener: Try[R0] => Unit): FStream[R, W]
     def addSuccessListener(listener: R => Unit): FStream[R, W]
     def preSubscribe(): Unit
-    def setDebugEnabled(enabled: Boolean)
+    def setDebugEnabled(enabled: Boolean): FStream[R, W]
 }
 
 object FStream
@@ -32,7 +32,10 @@ object FStream
     {
         private val upStream: Producer[_ <: R] = Producer(connection, _debugEnabled, name)
 
-        override def setDebugEnabled(enabled: Boolean): Unit = { upStream.setDebugEnabled(enabled) }
+        override def setDebugEnabled(enabled: Boolean): FStream[R, W] = {
+            upStream.setDebugEnabled(enabled)
+            this
+        }
 
         override def read[R0 >: R](timeout: Duration): Future[R0] = upStream.get(timeout)
 
