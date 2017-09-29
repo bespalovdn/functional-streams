@@ -13,9 +13,9 @@ trait Producer[+A] {
     def get(timeout: Duration = null): Future[A]
     def pipeTo [B](c: Consumer[A, B]): Future[B]
     def ==> [B](c: Consumer[A, B]): Future[B] = pipeTo(c)
-    def transform [B](fn: A => B, name: String = null): Producer[B]
-    def filter(fn: A => Boolean, name: String = null): Producer[A]
-    def filterNot(fn: A => Boolean, name: String = null): Producer[A]
+    def transform [B](fn: A => B): Producer[B]
+    def filter(fn: A => Boolean): Producer[A]
+    def filterNot(fn: A => Boolean): Producer[A]
     def fork(name: String = null): Producer[A]
     def addListener[A0 >: A](listener: Try[A0] => Unit): Producer[A]
     def addSuccessListener(listener: A => Unit): Producer[A]
@@ -80,7 +80,7 @@ object Producer
 
         override def preSubscribe(): Unit = publisher.subscribe(this)
 
-        override def transform [B](fn: A => B, name: String): Producer[B] = {
+        override def transform [B](fn: A => B): Producer[B] = {
             val proxy = new PublisherProxy[A, B]{
                 override def upstream: Publisher[A] = publisher
                 override def push(elem: Try[A]): Unit = {
@@ -92,7 +92,7 @@ object Producer
             new ProducerImpl[B](proxy, name, isDebugEnabled)
         }
 
-        override def filter(fn: A => Boolean, name: String): Producer[A] = {
+        override def filter(fn: A => Boolean): Producer[A] = {
             val proxy = new PublisherProxy[A, A]{
                 override def upstream: Publisher[A] = publisher
                 override def push(elem: Try[A]): Unit = {
@@ -106,9 +106,9 @@ object Producer
             new ProducerImpl[A](proxy, name, isDebugEnabled)
         }
 
-        override def filterNot(fn: A => Boolean, name: String): Producer[A] = filter(a => !fn(a), name)
+        override def filterNot(fn: A => Boolean): Producer[A] = filter(a => !fn(a))
 
-        override def fork(name: String): Producer[A] = new ProducerImpl[A](publisher, name, isDebugEnabled)
+        override def fork(_name: String): Producer[A] = new ProducerImpl[A](publisher, Option(_name).getOrElse(name), isDebugEnabled)
 
         override def addListener[A0 >: A](listener: Try[A0] => Unit): Producer[A] = {
             listeners :+= listener

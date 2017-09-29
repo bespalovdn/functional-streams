@@ -12,9 +12,9 @@ trait FStream[+R, -W]{
     def read[R0 >: R](timeout: Duration = null): Future[R0]
     def write[W1 <: W](elem: W1): Future[Unit]
     def <=> [R0 >: R, W1 <: W, C](consumer: FConsumer[R0, W1, C]): Future[C]
-    def transform [C, D](down: R => C, up: D => W, name: String = null): FStream[C, D]
-    def filter(fn: R => Boolean, name: String = null): FStream[R, W]
-    def filterNot(fn: R => Boolean, name: String = null): FStream[R, W]
+    def transform [C, D](down: R => C, up: D => W): FStream[C, D]
+    def filter(fn: R => Boolean): FStream[R, W]
+    def filterNot(fn: R => Boolean): FStream[R, W]
     def fork(name: String = null): FStream[R, W]
     def addListener[R0 >: R](listener: Try[R0] => Unit): FStream[R, W]
     def addSuccessListener(listener: R => Unit): FStream[R, W]
@@ -43,19 +43,19 @@ object FStream
             upStream ==> consumer
         }
 
-        override def transform [C, D](down: R => C, up: D => W, name: String): FStream[C, D] = {
-            val transformed: Producer[C] = upStream.transform(down, name)
+        override def transform [C, D](down: R => C, up: D => W): FStream[C, D] = {
+            val transformed: Producer[C] = upStream.transform(down)
             producer2stream(transformed, up)
         }
 
-        override def filter(fn: R => Boolean, name: String): FStream[R, W] = {
-            val filtered = upStream.filter(fn, name)
+        override def filter(fn: R => Boolean): FStream[R, W] = {
+            val filtered = upStream.filter(fn)
             producer2stream(filtered, identity)
         }
 
-        override def filterNot(fn: R => Boolean, name: String): FStream[R, W] = filter(a => !fn(a), name)
+        override def filterNot(fn: R => Boolean): FStream[R, W] = filter(a => !fn(a))
 
-        override def fork(name: String): FStream[R, W] = producer2stream(upStream.fork(name), identity)
+        override def fork(_name: String): FStream[R, W] = producer2stream(upStream.fork(Option(_name).getOrElse(name)), identity)
 
         override def addListener[R0 >: R](listener: Try[R0] => Unit): FStream[R, W] = {
             upStream.addListener(listener)
