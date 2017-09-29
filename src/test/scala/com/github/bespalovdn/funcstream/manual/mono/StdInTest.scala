@@ -2,6 +2,7 @@ package com.github.bespalovdn.funcstream.manual.mono
 
 import java.util.concurrent.Executors
 
+import com.github.bespalovdn.funcstream.ConnectionSettings
 import com.github.bespalovdn.funcstream.mono.{Consumer, Producer, Publisher, Subscriber}
 
 import scala.collection.mutable
@@ -31,7 +32,7 @@ object StdInTest
     def apply(): Unit = {
         import scala.concurrent.ExecutionContext.Implicits.global
 
-        val producer: Producer[String] = Producer(new StdReader)
+        val producer: Producer[String] = Producer(new StdReader, ConnectionSettings.default)
         val toInt: String => Int = _.toInt // transformer
         val even: Int => Boolean = i => i % 2 == 0 // filter
         val consumer: Consumer[Int, Int] = Consumer{

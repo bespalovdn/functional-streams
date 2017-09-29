@@ -2,6 +2,7 @@ package com.github.bespalovdn.funcstream.manual.mono
 
 import java.util.concurrent.Executors
 
+import com.github.bespalovdn.funcstream.ConnectionSettings
 import com.github.bespalovdn.funcstream.ext.FutureUtils._
 import com.github.bespalovdn.funcstream.mono.{Consumer, Producer, Publisher, Subscriber}
 
@@ -34,7 +35,7 @@ object MonotonicallyIncreasePublisherTest
     def apply(): Unit ={
         import scala.concurrent.ExecutionContext.Implicits.global
 
-        val producer: Producer[String] = Producer(new Mono)
+        val producer: Producer[String] = Producer(new Mono, settings = ConnectionSettings.default)
 
         def consumer(name: String, nTimes: Int): Consumer[String, Unit] = Consumer{
             p => {

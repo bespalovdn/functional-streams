@@ -1,7 +1,9 @@
 package com.github.bespalovdn.funcstream.mono
 
+import com.github.bespalovdn.funcstream.ConnectionSettings
 import com.github.bespalovdn.funcstream.ext.TimeoutSupport
 import com.github.bespalovdn.funcstream.impl.PublisherProxy
+import com.github.bespalovdn.funcstream.logging.LoggingSupport
 
 import scala.collection.mutable
 import scala.concurrent.duration.Duration
@@ -12,10 +14,10 @@ trait Producer[+A] {
     def get(timeout: Duration = null): Future[A]
     def pipeTo [B](c: Consumer[A, B]): Future[B]
     def ==> [B](c: Consumer[A, B]): Future[B] = pipeTo(c)
-    def transform [B](fn: A => B): Producer[B]
-    def filter(fn: A => Boolean): Producer[A]
-    def filterNot(fn: A => Boolean): Producer[A]
-    def fork(): Producer[A]
+    def transform [B](fn: A => B, name: String = null): Producer[B]
+    def filter(fn: A => Boolean, name: String = null): Producer[A]
+    def filterNot(fn: A => Boolean, name: String = null): Producer[A]
+    def fork(name: String = null): Producer[A]
     def addListener[A0 >: A](listener: Try[A0] => Unit): Producer[A]
     def addSuccessListener(listener: A => Unit): Producer[A]
 
@@ -24,12 +26,14 @@ trait Producer[+A] {
 
 object Producer
 {
-    def apply[A](publisher: Publisher[A]): Producer[A] = new ProducerImpl[A](publisher)
+    def apply[A](publisher: Publisher[A], settings: ConnectionSettings, name: String = null): Producer[A] =
+        new ProducerImpl[A](publisher, settings, name)
 
-    private[funcstream] class ProducerImpl[A](val publisher: Publisher[A])
+    private[funcstream] class ProducerImpl[A](val publisher: Publisher[A], val settings: ConnectionSettings, val name: String)
         extends Producer[A]
         with Subscriber[A]
         with TimeoutSupport
+        with LoggingSupport
     {
         private object elements {
             val available = mutable.Queue.empty[Try[A]]
@@ -38,6 +42,7 @@ object Producer
         private var listeners = Vector.empty[Try[A] => Unit]
 
         override def push(elem: Try[A]): Unit = {
+            debug("push: " + elem)
             notifyListeners(elem)
             elements.synchronized {
                 if(elements.requested.nonEmpty) {
@@ -71,7 +76,7 @@ object Producer
 
         override def preSubscribe(): Unit = publisher.subscribe(this)
 
-        override def transform [B](fn: A => B): Producer[B] = {
+        override def transform [B](fn: A => B, name: String): Producer[B] = {
             val proxy = new PublisherProxy[A, B]{
                 override def upstream: Publisher[A] = publisher
                 override def push(elem: Try[A]): Unit = {
@@ -80,10 +85,10 @@ object Producer
                     forEachSubscriber(_.push(transformed))
                 }
             }
-            new ProducerImpl[B](proxy)
+            new ProducerImpl[B](proxy, settings, name)
         }
 
-        override def filter(fn: A => Boolean): Producer[A] = {
+        override def filter(fn: A => Boolean, name: String): Producer[A] = {
             val proxy = new PublisherProxy[A, A]{
                 override def upstream: Publisher[A] = publisher
                 override def push(elem: Try[A]): Unit = {
@@ -94,12 +99,12 @@ object Producer
                     }
                 }
             }
-            new ProducerImpl[A](proxy)
+            new ProducerImpl[A](proxy, settings, name)
         }
 
-        override def filterNot(fn: A => Boolean): Producer[A] = filter(a => !fn(a))
+        override def filterNot(fn: A => Boolean, name: String): Producer[A] = filter(a => !fn(a), name)
 
-        override def fork(): Producer[A] = new ProducerImpl[A](publisher)
+        override def fork(name: String): Producer[A] = new ProducerImpl[A](publisher, settings, name)
 
         override def addListener[A0 >: A](listener: Try[A0] => Unit): Producer[A] = {
             listeners :+= listener
