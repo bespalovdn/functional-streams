@@ -25,5 +25,4 @@ class TestPublisher extends DefaultPublisher[Int] {
 
 class TestConnection extends TestPublisher with Connection[Int, Int]{
     override def write(elem: Int): Future[Unit] = success()
-    override lazy val settings: ConnectionSettings = ConnectionSettings.default
 }

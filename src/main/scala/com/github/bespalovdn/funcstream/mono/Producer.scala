@@ -1,6 +1,5 @@
 package com.github.bespalovdn.funcstream.mono
 
-import com.github.bespalovdn.funcstream.ConnectionSettings
 import com.github.bespalovdn.funcstream.ext.TimeoutSupport
 import com.github.bespalovdn.funcstream.impl.PublisherProxy
 import com.github.bespalovdn.funcstream.logging.LoggingSupport
@@ -22,14 +21,15 @@ trait Producer[+A] {
     def addSuccessListener(listener: A => Unit): Producer[A]
 
     def preSubscribe(): Unit
+    def setDebugEnabled(enabled: Boolean)
 }
 
 object Producer
 {
-    def apply[A](publisher: Publisher[A], settings: ConnectionSettings, name: String = null): Producer[A] =
-        new ProducerImpl[A](publisher, settings, name)
+    def apply[A](publisher: Publisher[A], isDebugEnabled: Boolean = false, name: String = null): Producer[A] =
+        new ProducerImpl[A](publisher, name, isDebugEnabled)
 
-    private[funcstream] class ProducerImpl[A](val publisher: Publisher[A], val settings: ConnectionSettings, val name: String)
+    private[funcstream] class ProducerImpl[A](val publisher: Publisher[A], val name: String, _isDebugEnabled: Boolean)
         extends Producer[A]
         with Subscriber[A]
         with TimeoutSupport
@@ -40,6 +40,10 @@ object Producer
             val requested = mutable.Queue.empty[Promise[A]]
         }
         private var listeners = Vector.empty[Try[A] => Unit]
+
+        var isDebugEnabled: Boolean = _isDebugEnabled
+
+        override def setDebugEnabled(enabled: Boolean): Unit = isDebugEnabled = enabled
 
         override def push(elem: Try[A]): Unit = {
             debug("push: " + elem)
@@ -85,7 +89,7 @@ object Producer
                     forEachSubscriber(_.push(transformed))
                 }
             }
-            new ProducerImpl[B](proxy, settings, name)
+            new ProducerImpl[B](proxy, name, isDebugEnabled)
         }
 
         override def filter(fn: A => Boolean, name: String): Producer[A] = {
@@ -99,12 +103,12 @@ object Producer
                     }
                 }
             }
-            new ProducerImpl[A](proxy, settings, name)
+            new ProducerImpl[A](proxy, name, isDebugEnabled)
         }
 
         override def filterNot(fn: A => Boolean, name: String): Producer[A] = filter(a => !fn(a), name)
 
-        override def fork(name: String): Producer[A] = new ProducerImpl[A](publisher, settings, name)
+        override def fork(name: String): Producer[A] = new ProducerImpl[A](publisher, name, isDebugEnabled)
 
         override def addListener[A0 >: A](listener: Try[A0] => Unit): Producer[A] = {
             listeners :+= listener

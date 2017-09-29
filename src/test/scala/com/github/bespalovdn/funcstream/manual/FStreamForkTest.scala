@@ -15,7 +15,6 @@ object FStreamForkTest
 {
     class Mono extends Connection[String, String]
     {
-        override lazy val settings: ConnectionSettings = ConnectionSettings.default
         private val subscribers = mutable.Set.empty[Subscriber[String]]
 
         override def subscribe(subscriber: Subscriber[String]): Unit = subscribers += subscriber

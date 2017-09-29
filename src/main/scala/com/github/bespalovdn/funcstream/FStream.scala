@@ -19,16 +19,20 @@ trait FStream[+R, -W]{
     def addListener[R0 >: R](listener: Try[R0] => Unit): FStream[R, W]
     def addSuccessListener(listener: R => Unit): FStream[R, W]
     def preSubscribe(): Unit
+    def setDebugEnabled(enabled: Boolean)
 }
 
 object FStream
 {
-    def apply[R, W](connection: Connection[R, W], name: String = null): FStream[R, W] = new FStreamImpl[R, W](connection, name)
+    def apply[R, W](connection: Connection[R, W], name: String = null): FStream[R, W] =
+        new FStreamImpl[R, W](connection, false, name)
 
-    private class FStreamImpl[R, W](connection: Connection[R, W], val name: String)
+    private class FStreamImpl[R, W](connection: Connection[R, W], val _debugEnabled: Boolean, val name: String)
         extends FStream[R, W]
     {
-        private val upStream: Producer[_ <: R] = Producer(connection, connection.settings, name)
+        private val upStream: Producer[_ <: R] = Producer(connection, _debugEnabled, name)
+
+        override def setDebugEnabled(enabled: Boolean): Unit = { upStream.setDebugEnabled(enabled) }
 
         override def read[R0 >: R](timeout: Duration): Future[R0] = upStream.get(timeout)
 
@@ -69,11 +73,11 @@ object FStream
             val pImpl = producer.asInstanceOf[ProducerImpl[C]]
             def getPublisher(producer: Producer[C]): Publisher[C] = pImpl.publisher
             def toStream(producer: Producer[C]): FStream[C, D] =
-                new FStreamImpl[C, D](new ProxyEndPoint(getPublisher(producer), transformUp, pImpl.settings), pImpl.name)
+                new FStreamImpl[C, D](new ProxyEndPoint(getPublisher(producer), transformUp), pImpl.isDebugEnabled, pImpl.name)
             toStream(producer)
         }
 
-        private class ProxyEndPoint[C, D](val upstream: Publisher[C], transformUp: D => W, val settings: ConnectionSettings)
+        private class ProxyEndPoint[C, D](val upstream: Publisher[C], transformUp: D => W)
             extends Connection[C, D] with PublisherProxy[C, C]
         {
             override def write(elem: D): Future[Unit] = connection.write(transformUp(elem))

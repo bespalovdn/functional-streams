@@ -14,7 +14,6 @@ import scala.util.Success
 object FStreamStdInTest
 {
     class StdEndpoint extends Connection[String, String]{
-        override lazy val settings: ConnectionSettings = ConnectionSettings.default
         private val executorContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(2))
         private val subscribers = mutable.Set.empty[Subscriber[String]]
 
