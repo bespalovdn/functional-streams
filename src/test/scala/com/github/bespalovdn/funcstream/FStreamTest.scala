@@ -18,20 +18,27 @@ class FStreamTest extends UT
     implicit def executionContext: ExecutionContext = scala.concurrent.ExecutionContext.global
 
     "The test" should "check if read with timeout works" in {
-        val connection = new TestConnection with TimeoutSupport
+        val conn = new TestConnection with TimeoutSupport
+        val stream = FStream(conn)
 
-        val consumer: FConsumer[Int, Int, Unit] = FConsumer { stream =>
-            stream.read(timeout = 100.millisecond) >> success()
+        def consumer(nMillis: Int): FConsumer[Int, Int, Int] = FConsumer { stream =>
+            stream.read(timeout = nMillis.millisecond)
         }
 
-        val result: Future[Unit] = FStream(connection) <=> consumer
+        val res0: Future[Int] = stream <=> consumer(101)
         // check if it's not complete instantly:
-        result.value should be (None)
+        res0.value should be (None)
         // wait for a while (more than timeout in consumer) and check if result completed with TimeoutException:
         Thread.sleep(200)
-        inside (result.value) {
+        inside (res0.value) {
             case Some(Failure(t: Throwable)) => t shouldBe a [TimeoutException]
+            case None =>
         }
+
+        // check if it works in case of presence of value
+        val res1 = stream <=> consumer(102)
+        conn.pushNext()
+        res1.await(5.seconds) should be (1)
     }
 
     it should "check if stream consumes input from producer, when subscribed only" in {

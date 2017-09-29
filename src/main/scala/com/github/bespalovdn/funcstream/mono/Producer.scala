@@ -57,7 +57,7 @@ object Producer
             } else{
                 val p = Promise[A]
                 elements.requested.enqueue(p)
-                withTimeout(timeout)(p.future)
+                withTimeout(timeout)(p)
             }
         }
 
