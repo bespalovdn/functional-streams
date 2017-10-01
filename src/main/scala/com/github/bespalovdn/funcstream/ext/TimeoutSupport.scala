@@ -20,11 +20,10 @@ trait TimeoutSupport
                 }
             }
             val timeoutFuture = TimeoutSupport.scheduledExecutor.schedule(task, timeout.toMillis, TimeUnit.MILLISECONDS)
-            originFuture onComplete {
+            originFuture andThen {
                 case Success(_) => timeoutFuture.cancel(false)
                 case _ => // do nothing
             }
-            originFuture
         }
     }
 

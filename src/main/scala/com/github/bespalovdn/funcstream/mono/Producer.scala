@@ -6,7 +6,7 @@ import com.github.bespalovdn.funcstream.impl.PublisherProxy
 import scala.collection.mutable
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}
-import scala.util.{Failure, Success, Try}
+import scala.util.{Success, Try}
 
 trait Producer[+A] {
     def get(timeout: Duration = null): Future[A]
@@ -17,7 +17,6 @@ trait Producer[+A] {
     def filterNot(fn: A => Boolean): Producer[A]
     def fork(): Producer[A]
     def addListener[A0 >: A](listener: Try[A0] => Unit): Producer[A]
-    def addSuccessListener(listener: A => Unit): Producer[A]
 
     def preSubscribe(): Unit
 }
@@ -64,9 +63,9 @@ object Producer
         override def pipeTo [B](c: Consumer[A, B]): Future[B] = {
             import scala.concurrent.ExecutionContext.Implicits.global
             publisher.subscribe(this)
-            val f = c.consume(this)
-            f.onComplete(_ => publisher.unsubscribe(this))
-            f
+            c.consume(this) andThen {
+                case _ => publisher.unsubscribe(this)
+            }
         }
 
         override def preSubscribe(): Unit = publisher.subscribe(this)
@@ -104,14 +103,6 @@ object Producer
         override def addListener[A0 >: A](listener: Try[A0] => Unit): Producer[A] = {
             listeners :+= listener
             this
-        }
-
-        override def addSuccessListener(listener: A => Unit): Producer[A] = {
-            def filter(tA: Try[A]): Unit = tA match {
-                case Success(a) => listener(a)
-                case Failure(t) => // ignore
-            }
-            addListener(filter)
         }
 
         private def notifyListeners(elem: Try[A]): Unit = {
