@@ -202,14 +202,16 @@ class FStreamTest extends UT
     }
 
     ignore should "check if invariance of FStream types works" in {
-        val streamSS: FStream[String, String] = ???
-        val streamOO: FStream[Object, Object] = ???
+        trait R0; trait R extends R0; trait R1 extends R
+        trait W0; trait W extends W0; trait W1 extends W
 
-        val a: Future[Object] = streamSS.read()
-        streamOO.write("Hello")
+        val streamRW: FStream[R, W] = ???
 
-        val consumerOS: FConsumer[Object, String, Unit] = ???
-        streamOO <=> consumerOS
-        streamSS <=> consumerOS
+        val a: Future[R0] = streamRW.read()
+        streamRW.write(null: W1)
+
+        val consumer01: FConsumer[R0, W1, Unit] = ???
+        streamRW <=> consumer01
+        streamRW <=> consumer01
     }
 }
