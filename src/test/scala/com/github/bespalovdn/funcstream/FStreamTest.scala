@@ -201,6 +201,7 @@ class FStreamTest extends UT
         sum7.await() should be (7)
     }
 
+    //NOTE: this test is for compile-check only
     ignore should "check if invariance of FStream types works" in {
         trait R0; trait R extends R0; trait R1 extends R
         trait W0; trait W extends W0; trait W1 extends W
@@ -213,8 +214,11 @@ class FStreamTest extends UT
         val a: Future[R0] = streamRW.read()
         streamRW.write(null: W1)
 
-        val consumer01: FConsumer[R0, W1, Unit] = ???
-        streamRW <=> consumer01
-        streamRW <=> consumer01
+        val consumer: FConsumer[R, W, Unit] = ???
+        streamRW <=> consumer
+
+        (null: FStream[R, W]) <=> (null: FConsumer[Any, W, Unit])
+        (null: FStream[R, Any]) <=> (null: FConsumer[R, W, Unit])
+        (null: FStream[Nothing, W]) <=> (null: FConsumer[R, W, Unit])
     }
 }
