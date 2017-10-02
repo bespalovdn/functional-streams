@@ -206,6 +206,9 @@ class FStreamTest extends UT
         trait W0; trait W extends W0; trait W1 extends W
 
         val streamRW: FStream[R, W] = ???
+        val streamR0W: FStream[R0, W] = streamRW
+        val streamRW1: FStream[R, W1] = streamRW
+        val streamR0W1: FStream[R0, W1] = streamRW
 
         val a: Future[R0] = streamRW.read()
         streamRW.write(null: W1)
