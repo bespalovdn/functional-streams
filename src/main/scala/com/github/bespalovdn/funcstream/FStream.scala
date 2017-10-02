@@ -66,7 +66,7 @@ object FStream
         }
 
         private class ProxyEndPoint[C, D](val upstream: Publisher[C], transformUp: D => W) extends Connection[C, D] with PublisherProxy[C, C] {
-            override def write(elem: D): Future[Unit] = connection.write(transformUp(elem))
+            override def write(elem: D): Future[Unit] = try { connection.write(transformUp(elem)) } catch { case t: Throwable => Future.failed(t) }
             override def push(elem: Try[C]): Unit = forEachSubscriber(_.push(elem))
         }
 
