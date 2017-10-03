@@ -2,11 +2,11 @@ package com.github.bespalovdn.funcstream.ext
 
 import com.github.bespalovdn.funcstream.{FConsumer, FStream}
 
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 
 trait FStreamProvider[A, B, C]{
-    def <=> (consumer: FConsumer[A, B, C]): Future[C]
+    def <=> (consumer: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C]
 }
 
 trait FStreamConsumer[A, B, C]{
@@ -21,7 +21,7 @@ class FStreamProxy[A, B, C] extends FStreamConsumer[A, B, C] with FStreamProvide
         s = stream
         p.future
     }
-    override def <=> (consumer: FConsumer[A, B, C]): Future[C] = {
+    override def <=> (consumer: FConsumer[A, B, C])(implicit ec: ExecutionContext): Future[C] = {
         consumer.consume(s) andThen {
             case c => p.tryComplete(c)
         }
