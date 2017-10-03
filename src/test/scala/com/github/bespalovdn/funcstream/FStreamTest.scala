@@ -8,7 +8,7 @@ import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 
 import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.reflectiveCalls
 import scala.util.Failure
 
@@ -141,6 +141,29 @@ class FStreamTest extends UT
         res2.await() should be (2)
     }
 
+    trait StreamProvider[A, B, C]{
+        def apply(fn: FStream[A, B] => Future[C]): Future[C]
+    }
+
+    trait StreamConsumer[A, B, C]{
+        def consume(stream: FStream[A, B]): Future[C]
+    }
+
+    class DelayedConsumer[A, B, C] extends StreamConsumer[A, B, C] with StreamProvider[A, B, C]
+    {
+        private val p = Promise[C]
+        private var s: FStream[A, B] = null
+        override def consume(stream: FStream[A, B]): Future[C] = {
+            s = stream
+            p.future
+        }
+        override def apply(fn: (FStream[A, B]) => Future[C]): Future[C] = {
+            fn(s) andThen {
+                case c => p.tryComplete(c)
+            }
+        }
+    }
+
     it should "check if buffering functionality works" in {
         val conn = new TestConnection
         val stream = FStream(conn)
@@ -153,7 +176,8 @@ class FStreamTest extends UT
         conn.pushNext()
         res2.await() should be (2)
 
-        forked.preSubscribe()
+        val delayed = new DelayedConsumer[Int, Int, Unit]
+        forked <=> FConsumer[Int, Int, Unit]{ stream => delayed.consume(stream) }
 
         val res3 = stream <=> FConsumer[Int, Int, Int]{ stream => stream.read() }
         conn.pushNext()
@@ -163,7 +187,7 @@ class FStreamTest extends UT
         conn.pushNext()
         res5.await() should be (5)
 
-        val res345 = forked <=> FConsumer[Int, Int, Unit]{
+        val res345: Future[Unit] = delayed.apply{
             stream => for {
                 _ <- stream.read() >>= {elem => elem should be (3); success()}
                 _ <- stream.read() >>= {elem => elem should be (4); success()}

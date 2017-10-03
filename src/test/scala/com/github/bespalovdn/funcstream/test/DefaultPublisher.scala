@@ -1,4 +1,4 @@
-package com.github.bespalovdn.funcstream.impl
+package com.github.bespalovdn.funcstream.test
 
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.UnaryOperator

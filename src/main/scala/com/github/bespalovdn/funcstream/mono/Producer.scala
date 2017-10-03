@@ -17,8 +17,6 @@ trait Producer[+A] {
     def filterNot(fn: A => Boolean): Producer[A]
     def fork(): Producer[A]
     def addListener[A0 >: A](listener: Try[A0] => Unit): Producer[A]
-
-    def preSubscribe(): Unit
 }
 
 object Producer
@@ -67,8 +65,6 @@ object Producer
                 case _ => publisher.unsubscribe(this)
             }
         }
-
-        override def preSubscribe(): Unit = publisher.subscribe(this)
 
         override def transform [B](fn: A => B): Producer[B] = {
             val proxy = new PublisherProxy[A, B]{

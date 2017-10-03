@@ -1,7 +1,7 @@
 package com.github.bespalovdn.funcstream
 
 import com.github.bespalovdn.funcstream.ext.FutureUtils._
-import com.github.bespalovdn.funcstream.impl.DefaultPublisher
+import com.github.bespalovdn.funcstream.test.DefaultPublisher
 import org.scalatest._
 
 import scala.concurrent.Future

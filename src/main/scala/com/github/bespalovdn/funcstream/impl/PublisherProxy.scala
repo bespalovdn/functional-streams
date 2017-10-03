@@ -1,6 +1,6 @@
 package com.github.bespalovdn.funcstream.impl
 
-import java.util.concurrent.atomic.AtomicReference
+import java.util.{HashMap => JHashMap}
 
 import com.github.bespalovdn.funcstream.mono.{Publisher, Subscriber}
 
@@ -9,23 +9,23 @@ trait PublisherProxy[A, B] extends Subscriber[A] with Publisher[B]
 {
     def upstream: Publisher[A]
 
-    private val subscribers = new AtomicReference(Set.empty[Subscriber[B]])
+    private val subscribers = new JHashMap[Subscriber[B], Int]() // subscriber -> subscribe counter
 
     override def subscribe(subscriber: Subscriber[B]): Unit = subscribers.synchronized {
-        val subs = subscribers.get()
-        if(subs.isEmpty){
+        if(subscribers.isEmpty)
             upstream.subscribe(this)
-        }
-        subscribers.set(subs + subscriber)
+        subscribers.compute(subscriber, (k, v) => v + 1)
     }
 
     override def unsubscribe(subscriber: Subscriber[B]): Unit = subscribers.synchronized{
-        val subs = subscribers.get() - subscriber
-        if(subs.isEmpty){
+        val counter = subscribers.compute(subscriber, (k, v) => v - 1)
+        if(counter < 1)
+            subscribers.remove(subscriber)
+        if(subscribers.isEmpty)
             upstream.unsubscribe(this)
-        }
-        subscribers.set(subs)
     }
 
-    def forEachSubscriber(fn: Subscriber[B] => Unit): Unit = subscribers.get.foreach(fn)
+    def forEachSubscriber(fn: Subscriber[B] => Unit): Unit = subscribers.synchronized{
+        subscribers.keySet().forEach(subscriber => fn(subscriber))
+    }
 }
