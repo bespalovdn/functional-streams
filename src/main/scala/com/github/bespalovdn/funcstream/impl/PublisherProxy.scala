@@ -1,6 +1,6 @@
 package com.github.bespalovdn.funcstream.impl
 
-import java.util.{HashMap => JHashMap}
+import java.util.{HashMap => JHashMap, HashSet => JHashSet}
 
 import com.github.bespalovdn.funcstream.mono.{Publisher, Subscriber}
 
@@ -25,7 +25,8 @@ trait PublisherProxy[A, B] extends Subscriber[A] with Publisher[B]
             upstream.unsubscribe(this)
     }
 
-    def forEachSubscriber(fn: Subscriber[B] => Unit): Unit = subscribers.synchronized{
-        subscribers.keySet().forEach(subscriber => fn(subscriber))
+    def forEachSubscriber(fn: Subscriber[B] => Unit): Unit = {
+        val keys = subscribers.synchronized{ new JHashSet(subscribers.keySet()) }
+        keys.forEach(subscriber => fn(subscriber))
     }
 }
