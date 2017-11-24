@@ -1,6 +1,7 @@
 package com.github.bespalovdn.funcstream.impl
 
-import java.util.{HashMap => JHashMap, HashSet => JHashSet}
+import java.util.concurrent.ConcurrentHashMap
+import java.util.{HashSet => JHashSet}
 
 import com.github.bespalovdn.funcstream.mono.{Publisher, Subscriber}
 
@@ -9,7 +10,7 @@ trait PublisherProxy[A, B] extends Subscriber[A] with Publisher[B]
 {
     def upstream: Publisher[A]
 
-    private val subscribers = new JHashMap[Subscriber[B], Int]() // subscriber -> subscribe counter
+    private val subscribers = new ConcurrentHashMap[Subscriber[B], Int]() // subscriber -> subscribe counter
 
     override def subscribe(subscriber: Subscriber[B]): Unit = subscribers.synchronized {
         if(subscribers.isEmpty)
@@ -26,7 +27,7 @@ trait PublisherProxy[A, B] extends Subscriber[A] with Publisher[B]
     }
 
     def forEachSubscriber(fn: Subscriber[B] => Unit): Unit = {
-        val keys = subscribers.synchronized{ new JHashSet(subscribers.keySet()) }
+        val keys = new JHashSet(subscribers.keySet())
         keys.forEach(subscriber => fn(subscriber))
     }
 }
