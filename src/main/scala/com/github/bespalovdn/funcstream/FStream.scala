@@ -12,9 +12,10 @@ trait FStream[+R, -W]{
     def read[R0 >: R](timeout: Duration = null): Future[R0]
     def write[W1 <: W](elem: W1): Future[Unit]
     def <=> [R0 >: R, W1 <: W, C](consumer: FConsumer[R0, W1, C]): Future[C]
-    def transform [C, D](down: R => C, up: D => W): FStream[C, D]
     def filter(fn: R => Boolean): FStream[R, W]
     def filterNot(fn: R => Boolean): FStream[R, W]
+    def transform [C, D](down: R => C, up: D => W): FStream[C, D]
+    def transformWithFilter[C, D](down: R => Option[C], up: D => W): FStream[C, D]
     def fork(): FStream[R, W]
     def addListener[R0 >: R](listener: Try[R0] => Unit): FStream[R, W]
 }
@@ -39,6 +40,11 @@ object FStream
 
         override def transform [C, D](down: R => C, up: D => W): FStream[C, D] = {
             val transformed: Producer[C] = upStream.transform(down)
+            producer2stream(transformed, up)
+        }
+
+        override def transformWithFilter[C, D](down: (R) => Option[C], up: (D) => W): FStream[C, D] = {
+            val transformed: Producer[C] = upStream.transformWithFilter(down)
             producer2stream(transformed, up)
         }
 

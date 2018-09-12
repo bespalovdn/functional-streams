@@ -6,15 +6,16 @@ import com.github.bespalovdn.funcstream.impl.PublisherProxy
 import scala.collection.mutable
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}
-import scala.util.{Success, Try}
+import scala.util.{Failure, Success, Try}
 
 trait Producer[+A] {
     def get(timeout: Duration = null): Future[A]
     def pipeTo [B](c: Consumer[A, B]): Future[B]
     def ==> [B](c: Consumer[A, B]): Future[B] = pipeTo(c)
-    def transform [B](fn: A => B): Producer[B]
     def filter(fn: A => Boolean): Producer[A]
     def filterNot(fn: A => Boolean): Producer[A]
+    def transform [B](fn: A => B): Producer[B]
+    def transformWithFilter [B](fn: A => Option[B]): Producer[B]
     def fork(): Producer[A]
     def addListener[A0 >: A](listener: Try[A0] => Unit): Producer[A]
 }
@@ -73,6 +74,22 @@ object Producer
                     notifyListeners(elem)
                     val transformed: Try[B] = elem.map(fn)
                     forEachSubscriber(_.push(transformed))
+                }
+            }
+            new ProducerImpl[B](proxy)
+        }
+
+        override def transformWithFilter[B](fn: (A) => Option[B]): Producer[B] = {
+            val proxy = new PublisherProxy[A, B]{
+                override def upstream: Publisher[A] = publisher
+                override def push(elem: Try[A]): Unit = {
+                    notifyListeners(elem)
+                    val transformed: Try[Option[B]] = elem.map(fn)
+                    transformed match {
+                        case Success(Some(b)) => forEachSubscriber(_.push(Success(b)))
+                        case Success(None) => // skip
+                        case Failure(t) => forEachSubscriber(_.push(Failure(t)))
+                    }
                 }
             }
             new ProducerImpl[B](proxy)
