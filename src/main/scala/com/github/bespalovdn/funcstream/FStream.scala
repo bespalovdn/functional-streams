@@ -11,7 +11,8 @@ import scala.util.Try
 trait FStream[+R, -W]{
     def read[R0 >: R](timeout: Duration = null): Future[R0]
     def write[W1 <: W](elem: W1): Future[Unit]
-    def <=> [R0 >: R, W1 <: W, C](consumer: FConsumer[R0, W1, C]): Future[C]
+    def interactWith[R0 >: R, W1 <: W, C](consumer: FConsumer[R0, W1, C]): Future[C]
+    def <=> [R0 >: R, W1 <: W, C](consumer: FConsumer[R0, W1, C]): Future[C] = interactWith(consumer)
     def filter(fn: R => Boolean): FStream[R, W]
     def filterNot(fn: R => Boolean): FStream[R, W]
     def transform [C, D](down: R => C, up: D => W): FStream[C, D]
@@ -33,7 +34,7 @@ object FStream
 
         override def write[W1 <: W](elem: W1): Future[Unit] = connection.write(elem)
 
-        override def <=> [R0 >: R, W1 <: W, C](c: FConsumer[R0, W1, C]): Future[C] = {
+        override def interactWith [R0 >: R, W1 <: W, C](c: FConsumer[R0, W1, C]): Future[C] = {
             val consumer = Consumer[R, C] { _ => c.consume(this) }
             upStream ==> consumer
         }
