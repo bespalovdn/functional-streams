@@ -19,6 +19,9 @@ trait FStream[+R, -W]{
     def transformWithFilter[C, D](down: R => Option[C], up: D => W): FStream[C, D]
     def fork(): FStream[R, W]
     def addListener[R0 >: R](listener: Try[R0] => Unit): FStream[R, W]
+
+    def close(): Future[Unit]
+    def closed: Future[Unit]
 }
 
 object FStream
@@ -58,6 +61,10 @@ object FStream
 
         override def fork(): FStream[R, W] = producer2stream(upStream.fork(), identity)
 
+        override def close(): Future[Unit] = connection.close()
+
+        override def closed: Future[Unit] = connection.closed
+
         override def addListener[R0 >: R](listener: Try[R0] => Unit): FStream[R, W] = {
             upStream.addListener(listener)
             this
@@ -72,6 +79,8 @@ object FStream
         private class ProxyEndPoint[C, D](val upstream: Publisher[C], transformUp: D => W) extends Connection[C, D] with PublisherProxy[C, C] {
             override def write(elem: D): Future[Unit] = try { connection.write(transformUp(elem)) } catch { case t: Throwable => Future.failed(t) }
             override def push(elem: Try[C]): Unit = forEachSubscriber(_.push(elem))
+            override def close(): Future[Unit] = connection.close()
+            override def closed: Future[Unit] = connection.closed
         }
 
     }

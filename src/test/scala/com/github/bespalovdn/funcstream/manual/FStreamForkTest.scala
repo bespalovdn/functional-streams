@@ -3,6 +3,7 @@ package com.github.bespalovdn.funcstream.manual
 import java.util.concurrent.Executors
 
 import com.github.bespalovdn.funcstream._
+import com.github.bespalovdn.funcstream.exception.ConnectionClosedException
 import com.github.bespalovdn.funcstream.ext.FutureUtils._
 import com.github.bespalovdn.funcstream.mono.Subscriber
 
@@ -15,16 +16,16 @@ object FStreamForkTest
 {
     class Mono extends Connection[String, String]
     {
+        private implicit val executorContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
         private val subscribers = mutable.Set.empty[Subscriber[String]]
 
         override def subscribe(subscriber: Subscriber[String]): Unit = subscribers += subscriber
         override def unsubscribe(subscriber: Subscriber[String]): Unit = subscribers -= subscriber
 
-        override def write(elem: String): Future[Unit] = Future {
-            println(elem)
-        }(executorContext)
+        override def write(elem: String): Future[Unit] =
+            if(closed.isCompleted) fail(new ConnectionClosedException)
+            else Future { println(elem) }
 
-        private val executorContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
         Future {
             var nextNumber = 1
             while(true){
@@ -33,7 +34,7 @@ object FStreamForkTest
                 nextNumber += 1
                 Thread.sleep(1000)
             }
-        }(executorContext)
+        }
     }
 
     def apply(): Unit ={
