@@ -1,14 +1,19 @@
 package com.github.bespalovdn.funcstream.mono
 
+import com.github.bespalovdn.funcstream.Resource
+import com.github.bespalovdn.funcstream.exception.ConnectionClosedException
+import com.github.bespalovdn.funcstream.ext.FutureUtils._
 import com.github.bespalovdn.funcstream.ext.TimeoutSupport
 import com.github.bespalovdn.funcstream.impl.PublisherProxy
 
 import scala.collection.mutable
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success, Try}
 
-trait Producer[+A] {
+trait Producer[+A] extends Resource
+{
     def get(timeout: Duration = null): Future[A]
     def pipeTo [B](c: Consumer[A, B]): Future[B]
     def ==> [B](c: Consumer[A, B]): Future[B] = pipeTo(c)
@@ -49,15 +54,21 @@ object Producer
             }
         }
 
-        override def get(timeout: Duration = null): Future[A] = elements.synchronized {
-            if(elements.available.nonEmpty) {
-                Future.fromTry(elements.available.dequeue())
-            } else{
-                val p = Promise[A]
-                elements.requested.enqueue(p)
-                withTimeout(timeout)(p)
+        override def get(timeout: Duration = null): Future[A] =
+            if(closed.isCompleted) fail(new ConnectionClosedException)
+            else {
+                elements.synchronized {
+                    if (elements.available.nonEmpty) {
+                        Future.fromTry(elements.available.dequeue())
+                    } else {
+                        val p = Promise[A]
+                        elements.requested.enqueue(p)
+                        val f1: Future[A] = withTimeout(timeout)(p)
+                        val f2: Future[A] = closed >> fail(new ConnectionClosedException)
+                        f1 <|> f2
+                    }
+                }
             }
-        }
 
         override def pipeTo [B](c: Consumer[A, B]): Future[B] = {
             import scala.concurrent.ExecutionContext.Implicits.global
