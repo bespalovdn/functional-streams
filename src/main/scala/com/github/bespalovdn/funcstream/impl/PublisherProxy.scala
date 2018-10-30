@@ -3,12 +3,15 @@ package com.github.bespalovdn.funcstream.impl
 import java.util.concurrent.ConcurrentHashMap
 import java.util.{HashSet => JHashSet}
 
+import com.github.bespalovdn.funcstream.Resource
 import com.github.bespalovdn.funcstream.mono.{Publisher, Subscriber}
 
+import scala.concurrent.Future
+
 private[funcstream]
-trait PublisherProxy[A, B] extends Subscriber[A] with Publisher[B]
+trait PublisherProxy[A, B] extends Subscriber[A] with Publisher[B] with Resource
 {
-    def upstream: Publisher[A]
+    def upstream: Publisher[A] with Resource
 
     private val subscribers = new ConcurrentHashMap[Subscriber[B], Int]() // subscriber -> subscribe counter
 
@@ -30,4 +33,7 @@ trait PublisherProxy[A, B] extends Subscriber[A] with Publisher[B]
         val keys = new JHashSet(subscribers.keySet())
         keys.forEach(subscriber => fn(subscriber))
     }
+
+    override def close(): Future[Unit] = upstream.close()
+    override def closed: Future[Unit] = upstream.closed
 }

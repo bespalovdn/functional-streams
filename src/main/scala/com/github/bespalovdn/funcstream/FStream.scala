@@ -71,16 +71,14 @@ object FStream
         }
 
         private def producer2stream[C, D](producer: Producer[C], transformUp: D => W): FStream[C, D] = {
-            def getPublisher(producer: Producer[C]): Publisher[C] = producer.asInstanceOf[ProducerImpl[C]].publisher
+            def getPublisher(producer: Producer[C]): Publisher[C] with Resource = producer.asInstanceOf[ProducerImpl[C]].publisher
             def toStream(producer: Producer[C]): FStream[C, D] = new FStreamImpl[C, D](new ProxyEndPoint(getPublisher(producer), transformUp))
             toStream(producer)
         }
 
-        private class ProxyEndPoint[C, D](val upstream: Publisher[C], transformUp: D => W) extends Connection[C, D] with PublisherProxy[C, C] {
+        private class ProxyEndPoint[C, D](val upstream: Publisher[C] with Resource, transformUp: D => W) extends Connection[C, D] with PublisherProxy[C, C] {
             override def write(elem: D): Future[Unit] = try { connection.write(transformUp(elem)) } catch { case t: Throwable => Future.failed(t) }
             override def push(elem: Try[C]): Unit = forEachSubscriber(_.push(elem))
-            override def close(): Future[Unit] = connection.close()
-            override def closed: Future[Unit] = connection.closed
         }
 
     }

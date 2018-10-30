@@ -27,9 +27,9 @@ trait Producer[+A] extends Resource
 
 object Producer
 {
-    def apply[A](publisher: Publisher[A]): Producer[A] = new ProducerImpl[A](publisher)
+    def apply[A](publisher: Publisher[A] with Resource): Producer[A] = new ProducerImpl[A](publisher)
 
-    private[funcstream] class ProducerImpl[A](val publisher: Publisher[A])
+    private[funcstream] class ProducerImpl[A](val publisher: Publisher[A] with Resource)
         extends Producer[A]
         with Subscriber[A]
         with TimeoutSupport
@@ -79,7 +79,7 @@ object Producer
 
         override def transform [B](fn: A => B): Producer[B] = {
             val proxy = new PublisherProxy[A, B]{
-                override def upstream: Publisher[A] = publisher
+                override def upstream: Publisher[A] with Resource = publisher
                 override def push(elem: Try[A]): Unit = {
                     notifyListeners(elem)
                     val transformed: Try[B] = elem.map(fn)
@@ -91,7 +91,7 @@ object Producer
 
         override def transformWithFilter[B](fn: (A) => Option[B]): Producer[B] = {
             val proxy = new PublisherProxy[A, B]{
-                override def upstream: Publisher[A] = publisher
+                override def upstream: Publisher[A] with Resource = publisher
                 override def push(elem: Try[A]): Unit = {
                     notifyListeners(elem)
                     val transformed: Try[Option[B]] = elem.map(fn)
@@ -107,7 +107,7 @@ object Producer
 
         override def filter(fn: A => Boolean): Producer[A] = {
             val proxy = new PublisherProxy[A, A]{
-                override def upstream: Publisher[A] = publisher
+                override def upstream: Publisher[A] with Resource = publisher
                 override def push(elem: Try[A]): Unit = {
                     notifyListeners(elem)
                     elem match {
@@ -131,5 +131,8 @@ object Producer
         private def notifyListeners(elem: Try[A]): Unit = {
             listeners.foreach(listener => listener(elem))
         }
+
+        override def close(): Future[Unit] = publisher.close()
+        override def closed: Future[Unit] = publisher.closed
     }
 }
