@@ -39,6 +39,7 @@ object Producer
             val requested = mutable.Queue.empty[Promise[A]]
         }
         private var listeners = Vector.empty[Try[A] => Unit]
+        private def connectionClosed[B]: Future[B] = closed >> fail(new ConnectionClosedException)
 
         override def push(elem: Try[A]): Unit = {
             notifyListeners(elem)
@@ -59,13 +60,11 @@ object Producer
             else {
                 elements.synchronized {
                     if (elements.available.nonEmpty) {
-                        Future.fromTry(elements.available.dequeue())
+                        Future.fromTry(elements.available.dequeue()) <|> connectionClosed
                     } else {
                         val p = Promise[A]
                         elements.requested.enqueue(p)
-                        val f1: Future[A] = withTimeout(timeout)(p)
-                        val f2: Future[A] = closed >> fail(new ConnectionClosedException)
-                        f1 <|> f2
+                        withTimeout(timeout)(p) <|> connectionClosed
                     }
                 }
             }
