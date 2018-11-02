@@ -11,7 +11,7 @@ import scala.util.Success
 trait TimeoutSupport
 {
     def withTimeout[A](timeout: Duration)(origin: Promise[A]): Future[A] = {
-        if(timeout == null) origin.future
+        if(timeout == null || timeout == Duration.Inf) origin.future
         else {
             val originFuture = origin.future
             val task = new Runnable {
@@ -28,7 +28,7 @@ trait TimeoutSupport
     }
 
     def waitFor(timeout: Duration): Future[Unit] = {
-        if(timeout == null) Future.successful(())
+        if(timeout == null || timeout == Duration.Inf) Future.successful(())
         else {
             val p = Promise[Unit]
             val task = new TimerTask {
