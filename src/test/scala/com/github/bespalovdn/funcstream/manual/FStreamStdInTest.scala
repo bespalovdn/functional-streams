@@ -3,18 +3,21 @@ package com.github.bespalovdn.funcstream.manual
 import java.util.concurrent.Executors
 
 import com.github.bespalovdn.funcstream._
+import com.github.bespalovdn.funcstream.config.ReadTimeout
 import com.github.bespalovdn.funcstream.exception.ConnectionClosedException
 import com.github.bespalovdn.funcstream.ext.FutureUtils._
 import com.github.bespalovdn.funcstream.mono.Subscriber
 
 import scala.collection.mutable
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{Duration, _}
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.io.StdIn
 import scala.util.Success
 
 object FStreamStdInTest
 {
+    implicit val timeout: ReadTimeout = ReadTimeout(1.seconds)
+
     class StdEndpoint extends Connection[String, String]{
         private implicit val executorContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(2))
         private val subscribers = mutable.Set.empty[Subscriber[String]]

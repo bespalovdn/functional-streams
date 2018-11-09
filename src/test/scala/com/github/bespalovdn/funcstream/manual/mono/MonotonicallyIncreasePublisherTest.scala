@@ -2,17 +2,19 @@ package com.github.bespalovdn.funcstream.manual.mono
 
 import java.util.concurrent.Executors
 
+import com.github.bespalovdn.funcstream.Resource
+import com.github.bespalovdn.funcstream.config.ReadTimeout
 import com.github.bespalovdn.funcstream.ext.FutureUtils._
 import com.github.bespalovdn.funcstream.mono.{Consumer, Producer, Publisher, Subscriber}
 
 import scala.collection.mutable
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{Duration, _}
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.Success
 
 object MonotonicallyIncreasePublisherTest
 {
-    class Mono extends Publisher[String]
+    class Mono extends Publisher[String] with Resource
     {
         private val subscribers = mutable.Set.empty[Subscriber[String]]
 
@@ -34,6 +36,7 @@ object MonotonicallyIncreasePublisherTest
     def apply(): Unit ={
         import scala.concurrent.ExecutionContext.Implicits.global
 
+        implicit val readTimeout: ReadTimeout = ReadTimeout(1.second)
         val producer: Producer[String] = Producer(new Mono)
 
         def consumer(name: String, nTimes: Int): Consumer[String, Unit] = Consumer{

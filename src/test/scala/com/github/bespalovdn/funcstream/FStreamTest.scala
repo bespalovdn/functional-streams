@@ -2,6 +2,7 @@ package com.github.bespalovdn.funcstream
 
 import java.util.concurrent.TimeoutException
 
+import com.github.bespalovdn.funcstream.config.ReadTimeout
 import com.github.bespalovdn.funcstream.ext.FutureUtils._
 import com.github.bespalovdn.funcstream.ext.{FStreamProxy, TimeoutSupport}
 import org.junit.runner.RunWith
@@ -17,12 +18,14 @@ class FStreamTest extends UT
 {
     implicit def executionContext: ExecutionContext = scala.concurrent.ExecutionContext.global
 
+    implicit val readTimeout: ReadTimeout = ReadTimeout(1.second)
+
     "The test" should "check if read with timeout works" in {
         val conn = new TestConnection with TimeoutSupport
         val stream = FStream(conn)
 
         def consumer(nMillis: Int): FConsumer[Int, Int, Int] = FConsumer { stream =>
-            stream.read(timeout = nMillis.millisecond)
+            stream.read()(new ReadTimeout(nMillis.millisecond))
         }
 
         val res0: Future[Int] = stream <=> consumer(101)

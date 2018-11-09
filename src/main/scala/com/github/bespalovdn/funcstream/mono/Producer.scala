@@ -1,6 +1,7 @@
 package com.github.bespalovdn.funcstream.mono
 
 import com.github.bespalovdn.funcstream.Resource
+import com.github.bespalovdn.funcstream.config.ReadTimeout
 import com.github.bespalovdn.funcstream.exception.ConnectionClosedException
 import com.github.bespalovdn.funcstream.ext.FutureUtils._
 import com.github.bespalovdn.funcstream.ext.TimeoutSupport
@@ -8,13 +9,13 @@ import com.github.bespalovdn.funcstream.impl.PublisherProxy
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success, Try}
 
+
 trait Producer[+A] extends Resource
 {
-    def get(timeout: Duration = null): Future[A]
+    def get()(implicit timeout: ReadTimeout): Future[A]
     def pipeTo [B](c: Consumer[A, B]): Future[B]
     def ==> [B](c: Consumer[A, B]): Future[B] = pipeTo(c)
     def filter(fn: A => Boolean): Producer[A]
@@ -55,7 +56,7 @@ object Producer
             }
         }
 
-        override def get(timeout: Duration = null): Future[A] =
+        override def get()(implicit timeout: ReadTimeout): Future[A] =
             if(closed.isCompleted) fail(new ConnectionClosedException)
             else {
                 elements.synchronized {

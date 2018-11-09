@@ -3,12 +3,13 @@ package com.github.bespalovdn.funcstream.manual
 import java.util.concurrent.Executors
 
 import com.github.bespalovdn.funcstream._
+import com.github.bespalovdn.funcstream.config.ReadTimeout
 import com.github.bespalovdn.funcstream.exception.ConnectionClosedException
 import com.github.bespalovdn.funcstream.ext.FutureUtils._
 import com.github.bespalovdn.funcstream.mono.Subscriber
 
 import scala.collection.mutable
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{Duration, _}
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.Success
 
@@ -40,6 +41,7 @@ object FStreamForkTest
     def apply(): Unit ={
         import scala.concurrent.ExecutionContext.Implicits.global
 
+        implicit val readTimeout: ReadTimeout = ReadTimeout(1.second)
         val stream: FStream[String, String] = FStream(new Mono)
 
         def consumer(name: String, nTimes: Int): FConsumer[String, String, Unit] = FConsumer{

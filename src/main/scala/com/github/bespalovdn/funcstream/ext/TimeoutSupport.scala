@@ -3,15 +3,16 @@ package com.github.bespalovdn.funcstream.ext
 import java.util.TimerTask
 import java.util.concurrent._
 
+import com.github.bespalovdn.funcstream.config.ReadTimeout
+
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}
 import scala.util.Success
 
 trait TimeoutSupport
 {
-    def withTimeout[A](timeout: Duration)(origin: Promise[A]): Future[A] = {
-        if(timeout == null || timeout == Duration.Inf) origin.future
+    def withTimeout[A](timeout: ReadTimeout)(origin: Promise[A]): Future[A] = {
+        if(timeout == null || timeout == ReadTimeout.Inf) origin.future
         else {
             val originFuture = origin.future
             val task = new Runnable {
@@ -19,7 +20,7 @@ trait TimeoutSupport
                     origin.tryFailure(new TimeoutException(timeout.toString))
                 }
             }
-            val timeoutFuture = TimeoutSupport.scheduledExecutor.schedule(task, timeout.toMillis, TimeUnit.MILLISECONDS)
+            val timeoutFuture = TimeoutSupport.scheduledExecutor.schedule(task, timeout.duration.toMillis, TimeUnit.MILLISECONDS)
             originFuture andThen {
                 case Success(_) => timeoutFuture.cancel(false)
                 case _ => // do nothing
@@ -27,14 +28,14 @@ trait TimeoutSupport
         }
     }
 
-    def waitFor(timeout: Duration): Future[Unit] = {
-        if(timeout == null || timeout == Duration.Inf) Future.successful(())
+    def waitFor(timeout: ReadTimeout): Future[Unit] = {
+        if(timeout == null || timeout == ReadTimeout.Inf) Future.successful(())
         else {
             val p = Promise[Unit]
             val task = new TimerTask {
                 override def run(): Unit = p.success(())
             }
-            TimeoutSupport.scheduledExecutor.schedule(task, timeout.toMillis, TimeUnit.MILLISECONDS)
+            TimeoutSupport.scheduledExecutor.schedule(task, timeout.duration.toMillis, TimeUnit.MILLISECONDS)
             p.future
         }
     }

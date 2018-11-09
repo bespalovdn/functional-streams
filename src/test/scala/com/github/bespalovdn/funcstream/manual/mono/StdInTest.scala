@@ -2,17 +2,19 @@ package com.github.bespalovdn.funcstream.manual.mono
 
 import java.util.concurrent.Executors
 
+import com.github.bespalovdn.funcstream.Resource
+import com.github.bespalovdn.funcstream.config.ReadTimeout
 import com.github.bespalovdn.funcstream.mono.{Consumer, Producer, Publisher, Subscriber}
 
 import scala.collection.mutable
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{Duration, _}
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.io.StdIn
 import scala.util.Success
 
 object StdInTest
 {
-    class StdReader extends Publisher[String]
+    class StdReader extends Publisher[String] with Resource
     {
         private val subscribers = mutable.Set.empty[Subscriber[String]]
 
@@ -30,6 +32,7 @@ object StdInTest
 
     def apply(): Unit = {
         import scala.concurrent.ExecutionContext.Implicits.global
+        implicit val readTimeout: ReadTimeout = ReadTimeout(1.second)
 
         val producer: Producer[String] = Producer(new StdReader)
         val toInt: String => Int = _.toInt // transformer

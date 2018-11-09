@@ -1,15 +1,15 @@
 package com.github.bespalovdn.funcstream
 
+import com.github.bespalovdn.funcstream.config.ReadTimeout
 import com.github.bespalovdn.funcstream.impl.PublisherProxy
 import com.github.bespalovdn.funcstream.mono.Producer.ProducerImpl
 import com.github.bespalovdn.funcstream.mono.{Consumer, Producer, Publisher}
 
 import scala.concurrent.Future
-import scala.concurrent.duration.Duration
 import scala.util.Try
 
 trait FStream[+R, -W]{
-    def read[R0 >: R](timeout: Duration = null): Future[R0]
+    def read[R0 >: R]()(implicit timeout: ReadTimeout): Future[R0]
     def write[W1 <: W](elem: W1): Future[Unit]
     def interactWith[R0 >: R, W1 <: W, C](consumer: FConsumer[R0, W1, C]): Future[C]
     def <=> [R0 >: R, W1 <: W, C](consumer: FConsumer[R0, W1, C]): Future[C] = interactWith(consumer)
@@ -33,7 +33,7 @@ object FStream
     {
         private val upStream: Producer[_ <: R] = Producer(connection)
 
-        override def read[R0 >: R](timeout: Duration): Future[R0] = upStream.get(timeout)
+        override def read[R0 >: R]()(implicit timeout: ReadTimeout): Future[R0] = upStream.get()
 
         override def write[W1 <: W](elem: W1): Future[Unit] = connection.write(elem)
 
