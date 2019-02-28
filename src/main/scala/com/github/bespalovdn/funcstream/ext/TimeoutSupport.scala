@@ -29,7 +29,8 @@ trait TimeoutSupport
     }
 
     def waitFor(timeout: ReadTimeout): Future[Unit] = {
-        if(timeout == null || timeout == ReadTimeout.Inf) Future.successful(())
+        if(timeout == null) Future.successful(())
+        else if(timeout == ReadTimeout.Inf)  Future.never
         else {
             val p = Promise[Unit]
             val task = new TimerTask {
