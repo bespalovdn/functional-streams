@@ -10,6 +10,7 @@ import scala.util.Try
 
 trait FStream[+R, -W]{
     def read[R0 >: R]()(implicit timeout: ReadTimeout): Future[R0]
+    def readOrStash[B](reader: R => Option[Future[B]])(implicit timeout: ReadTimeout): Future[B]
     def write[W1 <: W](elem: W1): Future[Unit]
     def interactWith[R0 >: R, W1 <: W, C](consumer: FConsumer[R0, W1, C]): Future[C]
     def <=> [R0 >: R, W1 <: W, C](consumer: FConsumer[R0, W1, C]): Future[C] = interactWith(consumer)
@@ -18,7 +19,6 @@ trait FStream[+R, -W]{
     def transform [C, D](down: R => C, up: D => W): FStream[C, D]
     def transformWithFilter[C, D](down: R => Option[C], up: D => W): FStream[C, D]
     def fork(): FStream[R, W]
-    def addListener[R0 >: R](listener: Try[R0] => Unit): FStream[R, W]
 
     def close(): Future[Unit]
     def closed: Future[Unit]
@@ -35,6 +35,8 @@ object FStream
 
         override def read[R0 >: R]()(implicit timeout: ReadTimeout): Future[R0] = upStream.get()
 
+        override def readOrStash[B](reader: R => Option[Future[B]])(implicit timeout: ReadTimeout): Future[B] = upStream.getOrStash(reader)
+
         override def write[W1 <: W](elem: W1): Future[Unit] = connection.write(elem)
 
         override def interactWith [R0 >: R, W1 <: W, C](c: FConsumer[R0, W1, C]): Future[C] = {
@@ -47,7 +49,7 @@ object FStream
             producer2stream(transformed, up)
         }
 
-        override def transformWithFilter[C, D](down: (R) => Option[C], up: (D) => W): FStream[C, D] = {
+        override def transformWithFilter[C, D](down: R => Option[C], up: D => W): FStream[C, D] = {
             val transformed: Producer[C] = upStream.transformWithFilter(down)
             producer2stream(transformed, up)
         }
@@ -64,11 +66,6 @@ object FStream
         override def close(): Future[Unit] = connection.close()
 
         override def closed: Future[Unit] = connection.closed
-
-        override def addListener[R0 >: R](listener: Try[R0] => Unit): FStream[R, W] = {
-            upStream.addListener(listener)
-            this
-        }
 
         private def producer2stream[C, D](producer: Producer[C], transformUp: D => W): FStream[C, D] = {
             def getPublisher(producer: Producer[C]): Publisher[C] with Resource = producer.asInstanceOf[ProducerImpl[C]].publisher
