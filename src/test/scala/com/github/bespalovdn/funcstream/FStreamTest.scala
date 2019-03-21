@@ -4,7 +4,7 @@ import java.util.concurrent.TimeoutException
 
 import com.github.bespalovdn.funcstream.config.ReadTimeout
 import com.github.bespalovdn.funcstream.ext.FutureUtils._
-import com.github.bespalovdn.funcstream.ext.{FStreamProxy, TimeoutSupport}
+import com.github.bespalovdn.funcstream.ext.{FProxy, TimeoutSupport}
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 
@@ -156,8 +156,8 @@ class FStreamTest extends UT
         conn.pushNext()
         res2.await() should be (2)
 
-        val proxy = new FStreamProxy[Int, Int, Unit]
-        forked <=> FConsumer[Int, Int, Unit]{ stream => proxy.consume(stream) }
+        val proxy = new FProxy[Int, Int, Unit]
+        forked <=> FConsumer[Int, Int, Unit]{ stream => proxy(stream) }
 
         val res3 = stream <=> FConsumer[Int, Int, Int]{ stream => stream.read() }
         conn.pushNext()
