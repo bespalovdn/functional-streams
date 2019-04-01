@@ -10,7 +10,8 @@ import scala.util.Try
 
 trait FStream[+R, -W]{
     def read[R0 >: R]()(implicit timeout: ReadTimeout): Future[R0]
-    def readOrStash[B](reader: R => Option[Future[B]])(implicit timeout: ReadTimeout): Future[B]
+    def readWithFilter[R1](filter: R => Option[R1])(implicit timeout: ReadTimeout): Future[R1]
+    def readOrStash[R1](reader: R => Option[Future[R1]])(implicit timeout: ReadTimeout): Future[R1]
     def write[W1 <: W](elem: W1): Future[Unit]
     def interactWith[R0 >: R, W1 <: W, C](consumer: FConsumer[R0, W1, C]): Future[C]
     def <=> [R0 >: R, W1 <: W, C](consumer: FConsumer[R0, W1, C]): Future[C] = interactWith(consumer)
@@ -35,7 +36,9 @@ object FStream
 
         override def read[R0 >: R]()(implicit timeout: ReadTimeout): Future[R0] = upStream.get()
 
-        override def readOrStash[B](reader: R => Option[Future[B]])(implicit timeout: ReadTimeout): Future[B] = upStream.getOrStash(reader)
+        override def readWithFilter[R1](filter: R => Option[R1])(implicit timeout: ReadTimeout): Future[R1] = upStream.getWithFilter(filter)
+
+        override def readOrStash[R1](reader: R => Option[Future[R1]])(implicit timeout: ReadTimeout): Future[R1] = upStream.getOrStash(reader)
 
         override def write[W1 <: W](elem: W1): Future[Unit] = connection.write(elem)
 

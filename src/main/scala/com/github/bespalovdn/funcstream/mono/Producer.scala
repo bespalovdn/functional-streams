@@ -18,6 +18,7 @@ import scala.util.{Failure, Success, Try}
 trait Producer[+A] extends Resource
 {
     def get()(implicit timeout: ReadTimeout): Future[A]
+    def getWithFilter[B](filter: A => Option[B])(implicit timeout: ReadTimeout): Future[B]
     def getOrStash[B](reader: A => Option[Future[B]])(implicit timeout: ReadTimeout): Future[B]
     def pipeTo [B](c: Consumer[A, B]): Future[B]
     def ==> [B](c: Consumer[A, B]): Future[B] = pipeTo(c)
@@ -72,12 +73,24 @@ object Producer
                 }
             }
 
+        override def getWithFilter[B](filter: A => Option[B])(implicit timeout: ReadTimeout): Future[B] = {
+            val totalTimeout = waitFor(timeout) >> fail(new TimeoutException(timeout.toString))
+            def tryRead(): Future[B] = for {
+                a <- get() <|> totalTimeout
+                b <- filter(a) match {
+                    case Some(b) => success(b)
+                    case None => tryRead()
+                }
+            } yield b
+            tryRead()
+        }
+
         override def getOrStash[B](reader: A => Option[Future[B]])(implicit timeout: ReadTimeout): Future[B] = {
             val totalTimeout = waitFor(timeout) >> fail(new TimeoutException(timeout.toString))
             def tryRead(): Future[B] = for {
                 a <- get() <|> totalTimeout
                 b <- reader(a) match {
-                    case Some(f) => f
+                    case Some(fB) => fB
                     case None =>
                         stash(a)
                         tryRead()
