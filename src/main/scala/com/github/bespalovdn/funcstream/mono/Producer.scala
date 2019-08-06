@@ -48,13 +48,22 @@ object Producer
 
         override def push(elem: Try[A]): Unit = {
             elements.synchronized {
-                if(elements.requested.nonEmpty) {
-                    val completed = elements.requested.dequeue().tryComplete(elem)
-                    if(!completed) {
-                        push(elem) // to handle timed out requests
-                    }
-                } else {
+                if(elements.requested.isEmpty){
                     elements.available.enqueue(elem)
+                } else {
+                    // Try complete requested elements.
+                    // Request may fail completion, for instance it already complete by timeout.
+                    // In this case we try to complete next requested element.
+                    var isEmpty = false
+                    var completed = false
+                    do{
+                        isEmpty = elements.requested.isEmpty
+                        completed = if(!isEmpty) elements.requested.dequeue().tryComplete(elem) else false
+                    }while(!isEmpty && !completed)
+                    // Finally, if no one requested element complete, we add an element into list of available items:
+                    if(!completed){
+                        elements.available.enqueue(elem)
+                    }
                 }
             }
         }
