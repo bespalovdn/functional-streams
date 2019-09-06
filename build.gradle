@@ -1,10 +1,27 @@
+plugins {
+    id 'maven-publish'
+}
+
 apply plugin: 'scala'
 apply plugin: 'maven'
 apply plugin: 'signing'
 
 group = "com.github.bespalovdn"
 archivesBaseName = "functional-streams_2.12"
-version = '1.0.0.71-SNAPSHOT'
+version = '1.0.0.72-SNAPSHOT'
+
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = group
+            artifactId = archivesBaseName
+            version = version
+
+            from components.java
+        }
+    }
+}
 
 tasks.withType(ScalaCompile) {
     // Enable Scala warnings output
@@ -17,6 +34,7 @@ repositories {
 
 dependencies {
     compile 'org.scala-lang:scala-library:2.12.3'
+    compile 'org.slf4j:slf4j-api:1.7.5'
     testCompile 'org.scalatest:scalatest_2.12:3.0.1'
     testCompile 'junit:junit:4.12'
 }

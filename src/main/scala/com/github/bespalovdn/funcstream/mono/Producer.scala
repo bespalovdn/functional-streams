@@ -8,6 +8,7 @@ import com.github.bespalovdn.funcstream.exception.ConnectionClosedException
 import com.github.bespalovdn.funcstream.ext.FutureUtils._
 import com.github.bespalovdn.funcstream.ext.TimeoutSupport
 import com.github.bespalovdn.funcstream.impl.PublisherProxy
+import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -22,22 +23,26 @@ trait Producer[+A] extends Resource
     def getOrStash[B](reader: A => Option[Future[B]])(implicit timeout: ReadTimeout): Future[B]
     def pipeTo [B](c: Consumer[A, B]): Future[B]
     def ==> [B](c: Consumer[A, B]): Future[B] = pipeTo(c)
-    def filter(fn: A => Boolean): Producer[A]
-    def filterNot(fn: A => Boolean): Producer[A]
-    def transform [B](fn: A => B): Producer[B]
-    def transformWithFilter [B](fn: A => Option[B]): Producer[B]
-    def fork(): Producer[A]
+    def filter(fn: A => Boolean, name: String = "NONAME"): Producer[A]
+    def filterNot(fn: A => Boolean, name: String = "NONAME"): Producer[A]
+    def transform [B](fn: A => B, name: String = "NONAME"): Producer[B]
+    def transformWithFilter [B](fn: A => Option[B], name: String = "NONAME"): Producer[B]
+    def fork(name: String = "NONAME"): Producer[A]
 }
 
 object Producer
 {
-    def apply[A](publisher: Publisher[A] with Resource): Producer[A] = new ProducerImpl[A](publisher)
+    private lazy val logger = LoggerFactory.getLogger(getClass)
 
-    private[funcstream] class ProducerImpl[A](val publisher: Publisher[A] with Resource)
+    def apply[A](publisher: Publisher[A] with Resource, name: String = "NONAME"): Producer[A] = new ProducerImpl[A](name, publisher)
+
+    private[funcstream] class ProducerImpl[A](name: String, val publisher: Publisher[A] with Resource)
         extends Producer[A]
             with Subscriber[A]
             with TimeoutSupport
     {
+        private def log(msg: String): Unit = {} //logger.warn(name + ": " + msg)
+
         private object elements {
             val available = mutable.Queue.empty[Try[A]]
             val requested = mutable.Queue.empty[Promise[A]]
@@ -47,8 +52,10 @@ object Producer
         private def connectionClosed[B]: Future[B] = closed >> fail(new ConnectionClosedException)
 
         override def push(elem: Try[A]): Unit = {
+            log("FS: push started with elem: " + elem)
             elements.synchronized {
                 if(elements.requested.isEmpty){
+                    log("FS: Element is being added into AVAILABLE queue. Elem: " + elem)
                     elements.available.enqueue(elem)
                 } else {
                     // Try complete requested elements.
@@ -58,10 +65,14 @@ object Producer
                     var completed = false
                     do{
                         isEmpty = elements.requested.isEmpty
-                        completed = if(!isEmpty) elements.requested.dequeue().tryComplete(elem) else false
+                        completed = if(!isEmpty) {
+                            log("FS: Requested element is being complete by: " + elem)
+                            elements.requested.dequeue().tryComplete(elem)
+                        } else false
                     }while(!isEmpty && !completed)
                     // Finally, if no one requested element complete, we add an element into list of available items:
                     if(!completed){
+                        log("FS: Element is being added into AVAILABLE queue, due to `completed` status. Elem: " + elem)
                         elements.available.enqueue(elem)
                     }
                 }
@@ -116,48 +127,57 @@ object Producer
             }
         }
 
-        override def transform [B](fn: A => B): Producer[B] = {
+        override def transform [B](fn: A => B, name: String): Producer[B] = {
             val proxy = new PublisherProxy[A, B]{
                 override def upstream: Publisher[A] with Resource = publisher
                 override def push(elem: Try[A]): Unit = {
                     val transformed: Try[B] = elem.map(fn)
+                    log("transform: push elem: " + transformed)
                     forEachSubscriber(_.push(transformed))
                 }
             }
-            new ProducerImpl[B](proxy)
+            new ProducerImpl[B](name, proxy)
         }
 
-        override def transformWithFilter[B](fn: (A) => Option[B]): Producer[B] = {
+        override def transformWithFilter[B](fn: (A) => Option[B], name: String): Producer[B] = {
             val proxy = new PublisherProxy[A, B]{
                 override def upstream: Publisher[A] with Resource = publisher
                 override def push(elem: Try[A]): Unit = {
                     val transformed: Try[Option[B]] = elem.map(fn)
                     transformed match {
-                        case Success(Some(b)) => forEachSubscriber(_.push(Success(b)))
+                        case Success(Some(b)) =>
+                            log("transformWithFilter: push elem: " + transformed)
+                            forEachSubscriber(_.push(Success(b)))
                         case Success(None) => // skip
-                        case Failure(t) => forEachSubscriber(_.push(Failure(t)))
+                            log("transformWithFilter: didn't pass the filter for elem: " + elem)
+                        case Failure(t) =>
+                            log("transformWithFilter: failed for elem: " + elem)
+                            forEachSubscriber(_.push(Failure(t)))
                     }
                 }
             }
-            new ProducerImpl[B](proxy)
+            new ProducerImpl[B](name, proxy)
         }
 
-        override def filter(fn: A => Boolean): Producer[A] = {
+        override def filter(fn: A => Boolean, name: String): Producer[A] = {
             val proxy = new PublisherProxy[A, A]{
                 override def upstream: Publisher[A] with Resource = publisher
                 override def push(elem: Try[A]): Unit = {
                     elem match {
-                        case Success(a) if fn(a) => forEachSubscriber(_.push(elem))
+                        case Success(a) if fn(a) =>
+                            log("filter: push further for elem: " + elem)
+                            forEachSubscriber(_.push(elem))
                         case _ => // do nothing
+                            log("filter: elem didn't pass filter: " + elem)
                     }
                 }
             }
-            new ProducerImpl[A](proxy)
+            new ProducerImpl[A](name, proxy)
         }
 
-        override def filterNot(fn: A => Boolean): Producer[A] = filter(a => !fn(a))
+        override def filterNot(fn: A => Boolean, name: String): Producer[A] = filter(a => !fn(a), name)
 
-        override def fork(): Producer[A] = new ProducerImpl[A](publisher)
+        override def fork(name: String): Producer[A] = new ProducerImpl[A](name, publisher)
 
         override def close(): Future[Unit] = publisher.close()
         override def closed: Future[Unit] = publisher.closed
