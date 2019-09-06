@@ -16,11 +16,11 @@ trait FStream[+R, -W]{
     def write[W1 <: W](elem: W1): Future[Unit]
     def interactWith[R0 >: R, W1 <: W, C](consumer: FConsumer[R0, W1, C]): Future[C]
     def <=> [R0 >: R, W1 <: W, C](consumer: FConsumer[R0, W1, C]): Future[C] = interactWith(consumer)
-    def filter(fn: R => Boolean, name: String = "NONAME"): FStream[R, W]
-    def filterNot(fn: R => Boolean, name: String = "NONAME"): FStream[R, W]
-    def transform [C, D](down: R => C, up: D => W, name: String = "NONAME"): FStream[C, D]
-    def transformWithFilter[C, D](down: R => Option[C], up: D => W, name: String = "NONAME"): FStream[C, D]
-    def fork(name: String = "NONAME"): FStream[R, W]
+    def filter(fn: R => Boolean, name: String = null): FStream[R, W]
+    def filterNot(fn: R => Boolean, name: String = null): FStream[R, W]
+    def transform [C, D](down: R => C, up: D => W, name: String = null): FStream[C, D]
+    def transformWithFilter[C, D](down: R => Option[C], up: D => W, name: String = null): FStream[C, D]
+    def fork(name: String = null): FStream[R, W]
 
     def close(): Future[Unit]
     def closed: Future[Unit]
@@ -30,14 +30,17 @@ object FStream
 {
     private lazy val logger = LoggerFactory.getLogger(getClass)
 
-    def apply[R, W](connection: Connection[R, W], name: String = "NONAME"): FStream[R, W] = new FStreamImpl[R, W](name, connection)
+    def apply[R, W](connection: Connection[R, W], name: String = null): FStream[R, W] = new FStreamImpl[R, W](Option(name), connection)
 
-    private class FStreamImpl[R, W](name: String, connection: Connection[R, W])
+    private class FStreamImpl[R, W](name: Option[String], connection: Connection[R, W])
         extends FStream[R, W]
     {
-        private def log(msg: String): Unit = {}//logger.warn(name + ": " + msg)
+        private def log(msg: String): Unit = {
+            if(name.nonEmpty)
+                logger.warn(name + ": " + msg)
+        }
 
-        private val upStream: Producer[_ <: R] = Producer(connection, name)
+        private val upStream: Producer[_ <: R] = Producer(connection, name.orNull)
 
         override def read[R0 >: R]()(implicit timeout: ReadTimeout): Future[R0] = upStream.get()
 
@@ -77,7 +80,7 @@ object FStream
 
         private def producer2stream[C, D](name: String, producer: Producer[C], transformUp: D => W): FStream[C, D] = {
             def getPublisher(producer: Producer[C]): Publisher[C] with Resource = producer.asInstanceOf[ProducerImpl[C]].publisher
-            def toStream(producer: Producer[C]): FStream[C, D] = new FStreamImpl[C, D](name, new ProxyEndPoint(getPublisher(producer), transformUp))
+            def toStream(producer: Producer[C]): FStream[C, D] = new FStreamImpl[C, D](Option(name), new ProxyEndPoint(getPublisher(producer), transformUp))
             toStream(producer)
         }
 

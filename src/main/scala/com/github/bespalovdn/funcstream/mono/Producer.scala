@@ -23,25 +23,28 @@ trait Producer[+A] extends Resource
     def getOrStash[B](reader: A => Option[Future[B]])(implicit timeout: ReadTimeout): Future[B]
     def pipeTo [B](c: Consumer[A, B]): Future[B]
     def ==> [B](c: Consumer[A, B]): Future[B] = pipeTo(c)
-    def filter(fn: A => Boolean, name: String = "NONAME"): Producer[A]
-    def filterNot(fn: A => Boolean, name: String = "NONAME"): Producer[A]
-    def transform [B](fn: A => B, name: String = "NONAME"): Producer[B]
-    def transformWithFilter [B](fn: A => Option[B], name: String = "NONAME"): Producer[B]
-    def fork(name: String = "NONAME"): Producer[A]
+    def filter(fn: A => Boolean, name: String = null): Producer[A]
+    def filterNot(fn: A => Boolean, name: String = null): Producer[A]
+    def transform [B](fn: A => B, name: String = null): Producer[B]
+    def transformWithFilter [B](fn: A => Option[B], name: String = null): Producer[B]
+    def fork(name: String = null): Producer[A]
 }
 
 object Producer
 {
     private lazy val logger = LoggerFactory.getLogger(getClass)
 
-    def apply[A](publisher: Publisher[A] with Resource, name: String = "NONAME"): Producer[A] = new ProducerImpl[A](name, publisher)
+    def apply[A](publisher: Publisher[A] with Resource, name: String = null): Producer[A] = new ProducerImpl[A](Option(name), publisher)
 
-    private[funcstream] class ProducerImpl[A](name: String, val publisher: Publisher[A] with Resource)
+    private[funcstream] class ProducerImpl[A](name: Option[String], val publisher: Publisher[A] with Resource)
         extends Producer[A]
             with Subscriber[A]
             with TimeoutSupport
     {
-        private def log(msg: String): Unit = {} //logger.warn(name + ": " + msg)
+        private def log(msg: String): Unit = {
+            if(name.nonEmpty)
+                logger.warn(name + ": " + msg)
+        }
 
         private object elements {
             val available = mutable.Queue.empty[Try[A]]
@@ -136,7 +139,7 @@ object Producer
                     forEachSubscriber(_.push(transformed))
                 }
             }
-            new ProducerImpl[B](name, proxy)
+            new ProducerImpl[B](Option(name), proxy)
         }
 
         override def transformWithFilter[B](fn: (A) => Option[B], name: String): Producer[B] = {
@@ -156,7 +159,7 @@ object Producer
                     }
                 }
             }
-            new ProducerImpl[B](name, proxy)
+            new ProducerImpl[B](Option(name), proxy)
         }
 
         override def filter(fn: A => Boolean, name: String): Producer[A] = {
@@ -172,12 +175,12 @@ object Producer
                     }
                 }
             }
-            new ProducerImpl[A](name, proxy)
+            new ProducerImpl[A](Option(name), proxy)
         }
 
         override def filterNot(fn: A => Boolean, name: String): Producer[A] = filter(a => !fn(a), name)
 
-        override def fork(name: String): Producer[A] = new ProducerImpl[A](name, publisher)
+        override def fork(name: String): Producer[A] = new ProducerImpl[A](Option(name), publisher)
 
         override def close(): Future[Unit] = publisher.close()
         override def closed: Future[Unit] = publisher.closed
