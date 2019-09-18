@@ -5,15 +5,12 @@ import java.util.concurrent.TimeoutException
 import com.github.bespalovdn.funcstream.config.ReadTimeout
 import com.github.bespalovdn.funcstream.ext.FutureUtils._
 import com.github.bespalovdn.funcstream.ext.{FProxy, TimeoutSupport}
-import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.reflectiveCalls
 import scala.util.Failure
 
-@RunWith(classOf[JUnitRunner])
 class FStreamTest extends UT
 {
     implicit def executionContext: ExecutionContext = scala.concurrent.ExecutionContext.global
