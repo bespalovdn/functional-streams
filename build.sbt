@@ -19,7 +19,6 @@ Test / fork := true
 Test / parallelExecution := false
 Test / testForkedParallel := false
 
-
 resolvers ++= Seq(
     "sonatype-snapshots"      at "https://oss.sonatype.org/content/repositories/snapshots",
     "sonatype-releases"       at "https://oss.sonatype.org/content/repositories/releases",
@@ -37,8 +36,6 @@ publishTo := {
     else
         Some("releases"  at nexus + "service/local/staging/deploy/maven2")
 }
-
-credentials += Credentials(Path.userHome / ".sbt" / ".credentials")
 
 pomExtra := (
     <url>https://github.com/bespalovdn/functional-streams</url>
