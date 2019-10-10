@@ -43,7 +43,7 @@ object Producer
     {
         private def log(msg: String): Unit = {
             if(name.nonEmpty)
-                logger.warn(name + ": " + msg)
+                logger.debug(name + ": " + msg)
         }
 
         private object elements {

@@ -37,7 +37,7 @@ object FStream
     {
         private def log(msg: String): Unit = {
             if(name.nonEmpty)
-                logger.warn(name + ": " + msg)
+                logger.debug(name + ": " + msg)
         }
 
         private val upStream: Producer[_ <: R] = Producer(connection, name.orNull)
