@@ -3,7 +3,7 @@ import sbt._
 
 organization := "com.github.bespalovdn"
 name := "functional-streams"
-version := "1.0.0.74-SNAPSHOT"
+version := "1.0.0.75-SNAPSHOT"
 
 scalaVersion := "2.12.10"
 crossScalaVersions := Seq("2.12.10")
